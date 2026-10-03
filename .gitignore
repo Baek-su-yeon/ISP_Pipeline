@@ -66,3 +66,11 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# 빌드결과물 및 이미지 데이터 폴더
+build/
+data/
+output/
+
+# vscode 실행 폴더
+.vscode/
