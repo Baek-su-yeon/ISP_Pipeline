@@ -52,8 +52,17 @@ int main (int argc, char* argv[]) {
     std::cout << "Black level: " << ip.imgdata.color.black << std::endl;
 
     // 수정: 채널별 추가 Black Level (cblack 앞 4개)
+    // 추가 수정: DNG 위치 패턴 Black Level 출력
     std::cout << "Per-channel black: ";
     for (int i = 0; i < 4; i++) {
+        std::cout << ip.imgdata.color.cblack[i] << " ";
+    }
+    std::cout << std::endl;
+
+    int pattern_end = 6 + ip.imgdata.color.cblack[4] * ip.imgdata.color.cblack[5];
+    std::cout << "Pattern (" << ip.imgdata.color.cblack[4] << " * " << ip.imgdata.color.cblack[5] << "): ";
+    for (int i = 6; i < pattern_end; i++)
+    {
         std::cout << ip.imgdata.color.cblack[i] << " ";
     }
     std::cout << std::endl;
