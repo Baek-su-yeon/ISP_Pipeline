@@ -16,6 +16,34 @@ bool check (int result) {
     return true;
 }
 
+bool save (std::string outdir, std::string name, const cv::Mat& img) {
+    std::string path = fs::path(outdir) / name;
+
+    if (!cv::imwrite(path, img)) {
+        std::cerr << "Failed to save: " << path << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+cv::Mat printDiff (const cv::Mat& img1, const cv::Mat& img2) {
+    // 비교용: 직접 구현(real)과 OpenCV convertTo(real8)의 차이
+    cv::Mat diff;
+    cv::absdiff(img1, img2, diff);   // 화소별 |real - real8|
+
+    double minDiff, maxDiff;
+    cv::minMaxLoc(diff, &minDiff, &maxDiff);
+    int diffCount = cv::countNonZero(diff);
+
+    std::cout << "Max diff: " << maxDiff << std::endl;
+    std::cout << "Different pixels: " << diffCount << " / " << diff.total()
+              << " (" << 100.0 * diffCount / diff.total() << "%)" << std::endl;
+
+    // 차이를 눈으로 보기 위한 그림 (차이 1 → 255로 확대, 다른 화소만 흰색)
+    return diff *255;
+}
+
 int main (int argc, char* argv[]) {
     if (argc < 2){
         std::cerr << "Usage :" << argv[0] << " <input filename>" << std::endl;
@@ -50,6 +78,7 @@ int main (int argc, char* argv[]) {
     int WL = ip.imgdata.color.maximum;
 
     // 비교해보고 싶어서 만든 것
+    // 256으로 나눈 나머지만 남아 등고선 무늬가 생김
     cv::Mat raw_noWL(rawH, rawW, CV_8UC1);
     for (int r = 0; r < rawH; r++){
         for(int c = 0; c < rawW; c++){
@@ -58,12 +87,9 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    std::string path = fs::path(outdir) / "raw_noWL.png";
-    if(!cv::imwrite(path, raw_noWL)) {
-        std::cerr << "Failed to save: " << path << std::endl;
-        return 1;
-    }
+    if(!save(outdir, "raw_noWL.png", raw_noWL)) return 1;
 
+    // 마진을 포함한 이미지 출력
     cv::Mat raw(rawH, rawW, CV_8UC1);
     for (int r = 0; r < rawH; r++){
         for(int c = 0; c < rawW; c++){
@@ -72,13 +98,9 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    path = fs::path(outdir) / "raw.png";
-    if(!cv::imwrite(path, raw)) {
-        std::cerr << "Failed to save: " << path << std::endl;
-        return 1;
-    }
+    if(!save(outdir, "raw.png", raw)) return 1;
 
-    // 이렇게하면 여백 없이 값 나오고
+    // 여백 없이 값 나오고, 그래서 실제 이미지 속성 자세히 보면 w*h 다름
     cv::Mat real(realH, realW, CV_8UC1);
     for (int r = 0; r < realH; r++){
         for (int c = 0; c < realW; c++){
@@ -87,11 +109,7 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    path = fs::path(outdir) / "real.png";
-    if(!cv::imwrite(path, real)) {
-        std::cerr << "Failed to save: " << path << std::endl;
-        return 1;
-    }
+    if(!save(outdir, "real.png", real)) return 1;
 
     // 참고용, for문 없이 원래됨
     // raw_image를 복사하지 않고 Mat으로 감싸기 (여백 포함 전체)
@@ -102,9 +120,10 @@ int main (int argc, char* argv[]) {
     cv::Mat real8;
     real16.convertTo(real8, CV_8U, 255.0 / WL);
 
-    path = fs::path(outdir) / "real_usingfunc.png";
-    if(!cv::imwrite(path, real8)) {
-        std::cerr << "Failed to save: " << path << std::endl;
-        return 1;
-    }
+    if(!save(outdir, "real_usingfunc.png", real8)) return 1;
+
+    cv::Mat diff = printDiff(real, real8);
+    if(!save(outdir, "diff_real_vs_func.png", diff)) return 1;
+
+    return 0;
 }
