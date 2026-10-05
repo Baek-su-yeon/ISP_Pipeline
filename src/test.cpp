@@ -111,5 +111,56 @@ int main (int argc, char* argv[]) {
         if(!save(outdir, name, ch[i])) return 1;
     }
 
+    // 0-4: 포화 확인 (8비트 값이 아니라 원래 raw 값 기준)
+    cv::Mat satMask = cv::Mat::zeros(realH, realW, CV_8UC1);  // 포화 위치만 흰색
+    int satCount[4]  = {0, 0, 0, 0};   // 값 >= WL
+    int overCount[4] = {0, 0, 0, 0};   // 값 > WL (White Level을 넘는 값)
+    int maxVal = 0;                    // 실제 raw 최댓값
+
+    for (int r = 0; r < realH; r++){
+        for (int c = 0; c < realW; c++){
+            int idx = (r + top) * rawW + (c + left);
+            int color = colors[r % 2][c % 2];
+            int v = rawImg[idx];
+
+            ch[color].at<uchar>(r / 2, c / 2) = cv::saturate_cast<uchar>(v * 255 / WL);
+
+            if (v >= WL) {
+                satCount[color]++;
+                satMask.at<uchar>(r, c) = 255;
+            }
+            if (v > WL) overCount[color]++;
+            if (v > maxVal) maxVal = v;
+        }
+    }
+    
+    // 최댓값에 몰린 화소 수 (실제 포화점 확인용)
+    int atMax[4] = {0, 0, 0, 0};
+    for (int r = 0; r < realH; r++){
+        for (int c = 0; c < realW; c++){
+            int idx = (r + top) * rawW + (c + left);
+            if (rawImg[idx] >= maxVal) atMax[colors[r % 2][c % 2]]++;
+        }
+    }
+
+    for (int i = 0; i < 4; i++) {
+        std::cout << names[i] << " at max (" << maxVal << "): " << atMax[i] << std::endl;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (!save(outdir, names[i] + ".png", ch[i])) return 1;
+    }
+
+    // 포화 통계 출력
+    int chTotal = (realH / 2) * (realW / 2);   // 채널 하나의 화소 수
+    std::cout << "White level: " << WL << ", max raw value: " << maxVal << std::endl;
+    for (int i = 0; i < 4; i++) {
+        std::cout << names[i] << " saturated: " << satCount[i] << " / " << chTotal
+                  << " (" << 100.0 * satCount[i] / chTotal << "%)"
+                  << ", over WL: " << overCount[i] << std::endl;
+    }
+
+    if (!save(outdir, "sat_mask.png", satMask)) return 1;
+
     return 0;
 }
