@@ -1,80 +1,66 @@
-// dng 파일 열기
-#include <libraw/libraw.h>
 #include <iostream>
+#include <libraw/libraw.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <filesystem>
 #include <string>
 
+bool check (int result) {
+    if (result != LIBRAW_SUCCESS) {
+        std::cerr << LibRaw::strerror(result) << std::endl;
+        return false;
+    }
+    
+    std::cout << "Success" << std::endl;
+    return true;
+}
 
 int main (int argc, char* argv[]) {
-    if (argc < 2) {
-        // 입력 경로 제대로 쳤는지 확인
-        std::cerr << "Usage: " << argv[0] << " <input file>" << std::endl;
+    if (argc < 2){
+        std::cerr << "Usage : " << argv[0] << "<input filename>" << std::endl;
         return 1;
     }
 
     std::string input = argv[1];
+    LibRaw ip;
 
-    LibRaw ip; // 객체 생성
-    int ret = ip.open_file(input.c_str()); // 파일명 char로 받으니까 변형
-
-    if (ret != LIBRAW_SUCCESS) {
-        std::cerr << LibRaw::strerror(ret) << std::endl;
-        return 1;
-    }
+    int ret = ip.open_file(input.c_str());
+    if (!check(ret)) return 1; 
 
     ret = ip.unpack();
-    if(ret != LIBRAW_SUCCESS) {
-        std::cerr << LibRaw::strerror(ret) << std::endl;
+    if (!check(ret)) return 1; 
+
+    unsigned short* rawImg = ip.imgdata.rawdata.raw_image;
+    if (rawImg == nullptr){
+        std::cerr << "Raw Img isn't Bayer" << std::endl;
         return 1;
     }
 
-    std::cout << "### Image idata Info" << std::endl;
-    std::cout << "- Camera manufacturer: " << ip.imgdata.idata.make << std::endl;
-    std::cout << "- Camera model: " << ip.imgdata.idata.model << std::endl;
+    int rawW = ip.imgdata.sizes.raw_width;
+    int rawH = ip.imgdata.sizes.raw_height;
+    int realW = ip.imgdata.sizes.width;
+    int realH = ip.imgdata.sizes.height;
+    int top = ip.imgdata.sizes.top_margin;
+    int left = ip.imgdata.sizes.left_margin;
 
-    // 수정: filters 숫자 대신 2x2 위치별 색을 글자로 출력
-    std::cout << "- Bayer pattern: ";
-    for (int r = 0; r < 2; r++) {
-        for (int c = 0; c < 2; c++) {
-            std::cout << ip.imgdata.idata.cdesc[ip.COLOR(r, c)];
+    // 비교해보고 싶어서 만든 것, 이러면 여백이 있는 경우에는 저장된 사진에 여백까지 나온다는거아님?
+    for (int r = 0; r < rawH; r++){
+        for(int c = 0; c < rawW; c++){
+            int idx = r * rawW + c;
+            std::cout << rawImg[idx] << " ";
         }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
-    std::cout << "---" << std::endl;
 
-    std::cout << "### Image Size Info" << std::endl;
-    std::cout << "- Raw Height: " << ip.imgdata.sizes.raw_height << ", Width: " << ip.imgdata.sizes.raw_width << std::endl;
-    // 수정: iheight/iwidth → height/width
-    std::cout << "- Real Height: " << ip.imgdata.sizes.height << ", Width: " << ip.imgdata.sizes.width << std::endl;
-    std::cout << "- Margin top: " << ip.imgdata.sizes.top_margin << ", left: " << ip.imgdata.sizes.left_margin << std::endl;
-    std::cout << "---" << std::endl;
-
-    std::cout << "### Image Color Info" << std::endl;
-    std::cout << "- Black level: " << ip.imgdata.color.black << std::endl;
-
-    // 수정: 채널별 추가 Black Level (cblack 앞 4개)
-    // 추가 수정: DNG 위치 패턴 Black Level 출력
-    std::cout << "- Per-channel black: ";
-    for (int i = 0; i < 4; i++) {
-        std::cout << ip.imgdata.color.cblack[i] << " ";
-    }
+    // 이렇게하면 여백 없이 값 나오고
     std::cout << std::endl;
 
-    int pattern_end = 6 + ip.imgdata.color.cblack[4] * ip.imgdata.color.cblack[5];
-    std::cout << "- Pattern (" << ip.imgdata.color.cblack[4] << " * " << ip.imgdata.color.cblack[5] << "): ";
-    for (int i = 6; i < pattern_end; i++)
-    {
-        std::cout << ip.imgdata.color.cblack[i] << " ";
+    for (int r = 0; r < realH; r++){
+        for (int c = 0; c < realW; c++){
+            int idx = (r + top) * rawW + (c + left);
+            std::cout << rawImg[idx] << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
-    std::cout << "- White level: " << ip.imgdata.color.maximum << std::endl;
-
-    // 수정: 배열 주소 대신 원소 4개 출력
-    std::cout << "- WB coefficient: ";
-    for (int i = 0; i < 4; i++) {
-        std::cout << ip.imgdata.color.cam_mul[i] << " ";
-    }
-    std::cout << std::endl;
-
-    return 0;
 }
