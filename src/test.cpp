@@ -77,53 +77,39 @@ int main (int argc, char* argv[]) {
     int left = ip.imgdata.sizes.left_margin;
     int WL = ip.imgdata.color.maximum;
 
-    // 비교해보고 싶어서 만든 것
-    // 256으로 나눈 나머지만 남아 등고선 무늬가 생김
-    cv::Mat raw_noWL(rawH, rawW, CV_8UC1);
-    for (int r = 0; r < rawH; r++){
-        for(int c = 0; c < rawW; c++){
-            int idx = r * rawW + c;
-            raw_noWL.at<uchar>(r, c) = rawImg[idx];
+    // 색 번호 확인
+    int colors[2][2];
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            char me = ip.imgdata.idata.cdesc[ip.COLOR(r, c)];
+            char nb = ip.imgdata.idata.cdesc[ip.COLOR(r, 1 - c)];   // 같은 행 옆 칸
+
+            if (me == 'R')      colors[r][c] = 0;
+            else if (me == 'B') colors[r][c] = 2;
+            else                colors[r][c] = (nb == 'R') ? 1 : 3;  // R 행 G : B 행 G
+            
+            std::cout << colors[r][c] << " ";
         }
+        std::cout << std::endl;
     }
 
-    if(!save(outdir, "raw_noWL.png", raw_noWL)) return 1;
-
-    // 마진을 포함한 이미지 출력
-    cv::Mat raw(rawH, rawW, CV_8UC1);
-    for (int r = 0; r < rawH; r++){
-        for(int c = 0; c < rawW; c++){
-            int idx = r * rawW + c;
-            raw.at<uchar>(r, c) = cv::saturate_cast<uchar>(rawImg[idx] * 255 / WL);
-        }
-    }
-
-    if(!save(outdir, "raw.png", raw)) return 1;
-
-    // 여백 없이 값 나오고, 그래서 실제 이미지 속성 자세히 보면 w*h 다름
-    cv::Mat real(realH, realW, CV_8UC1);
+    cv::Mat ch[4];
+    for (int i = 0; i < 4; i++) ch[i] = cv::Mat::zeros(realH / 2, realW / 2, CV_8UC1);
+    
     for (int r = 0; r < realH; r++){
         for (int c = 0; c < realW; c++){
             int idx = (r + top) * rawW + (c + left);
-            real.at<uchar>(r, c) = cv::saturate_cast<uchar>(rawImg[idx] * 255 / WL);
+            int color = colors[r % 2][c % 2];
+
+            ch[color].at<uchar>(r / 2, c / 2) = cv::saturate_cast<uchar>(rawImg[idx] * 255 / WL);
         }
     }
 
-    if(!save(outdir, "real.png", real)) return 1;
-
-    // 참고용, for문 없이 원래됨
-    // raw_image를 복사하지 않고 Mat으로 감싸기 (여백 포함 전체)
-    cv::Mat full16(rawH, rawW, CV_16UC1, rawImg);
-
-    // 곱하기·나누기·잘라내기·여백빼기를 한 번에
-    cv::Mat real16 = full16(cv::Rect(left, top, realW, realH));
-    cv::Mat real8;
-    real16.convertTo(real8, CV_8U, 255.0 / WL);
-
-    if(!save(outdir, "real_usingfunc.png", real8)) return 1;
-
-    cv::Mat diff = printDiff(real, real8);
-    if(!save(outdir, "diff_real_vs_func.png", diff)) return 1;
+    const std::string names[4] = {"R", "G_R", "B", "G_B"};
+    for (int i = 0; i < 4; i++) {
+        std::string name = names[i] + ".png";
+        if(!save(outdir, name, ch[i])) return 1;
+    }
 
     return 0;
 }
