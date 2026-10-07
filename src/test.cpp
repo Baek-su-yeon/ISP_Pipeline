@@ -80,10 +80,34 @@ int main (int argc, char* argv[]) {
     int patternC = ip.imgdata.color.cblack[5];
     std::cout << "Black pattern size: " << patternR << " x " << patternC << std::endl;
 
+    int colors[2][2];
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            char nowC = ip.imgdata.idata.cdesc[ip.COLOR(r, c)];
+            char nearC = ip.imgdata.idata.cdesc[ip.COLOR(r, 1 - c)];
+
+            if (nowC == 'R') colors[r][c] = 0;
+            else if (nowC == 'B') colors[r][c] = 2;
+            else colors[r][c] = (nearC == 'R') ? 1 : 3;
+        }
+    }
+
     int bases[2][2];
     for (int r = 0; r < 2; r++) {
         for (int c = 0; c < 2; c++) {
             bases[r][c] = BL + ip.imgdata.color.cblack[ip.COLOR(r, c)];
+        }
+    }
+
+    float gains[2][2];
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+
+            int colorIdx = ip.COLOR(r, c);
+
+            if (colorIdx == 3) colorIdx = 1;
+
+            gains[r][c] = ip.imgdata.color.cam_mul[colorIdx] / ip.imgdata.color.cam_mul[1];
         }
     }
 
@@ -94,8 +118,8 @@ int main (int argc, char* argv[]) {
             int base = bases[r % 2][c % 2];
 
             if (patternR && patternC) {
-                int idx = (r % patternR) * patternC + (c % patternC);
-                base += ip.imgdata.color.cblack[6 + idx];
+                int patIdx = (r % patternR) * patternC + (c % patternC);
+                base += ip.imgdata.color.cblack[6 + patIdx];
             }
 
             // float로 바꾼 뒤 빼고 나누기 → 0~1로 자르기
@@ -106,13 +130,70 @@ int main (int argc, char* argv[]) {
 
     double minVal, maxVal;
     cv::minMaxLoc(normImg, &minVal, &maxVal);
-    std::cout << "min: " << minVal << ", max: " << maxVal << std::endl;
+    std::cout << "norm min: " << minVal << ", max: " << maxVal << std::endl;
 
     cv::Mat normImg8;
     normImg.convertTo(normImg8, CV_8UC1, 255.0);
     if(!save(outdir, "normImg.png", normImg8)) return 1;
 
-    
+    cv::Mat WBImg = cv::Mat::zeros(realH, realW, CV_32F);
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+            float wb = normImg.at<float>(r, c) * gains[r % 2][c % 2];
+            WBImg.at<float>(r, c) = wb;
+        }
+    }
+
+    cv::minMaxLoc(WBImg, &minVal, &maxVal);
+    std::cout << "WB raw min: " << minVal << ", max: " << maxVal << std::endl;
+
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            float norm = normImg.at<float>(r, c);
+            float wb = WBImg.at<float>(r, c);
+            std::cout << "norm: " << norm << ", wb: " << wb << ", wb/no " << wb / norm << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    cv::Mat WBClip;
+    cv::min(WBImg, 1.0f, WBClip);
+
+    cv::minMaxLoc(WBClip, &minVal, &maxVal);
+    std::cout << "WB clip min: " << minVal << ", max: " << maxVal << std::endl;
+
+    cv::Mat WBClip8;
+    WBClip.convertTo(WBClip8, CV_8UC1, 255.0);
+    if(!save(outdir, "wb.png", WBClip8)) return 1;
+
+    cv::Mat ch[4];
+    for (int i = 0; i < 4; i++) ch[i] = cv::Mat::zeros(realH / 2, realW / 2, CV_32F);
+
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+            int color = colors[r % 2][c % 2];
+
+            ch[color].at<float>(r / 2, c / 2) = normImg.at<float>(r, c);
+        }
+    }
+
+    std::cout << "WB 전 채널별 평균 ";
+    for (int i = 0; i < 4; i++) std::cout << i << ": " << cv::mean(ch[i])[0] << ", ";
+    std::cout << std::endl;
+
+    for (int i = 0; i < 4; i++) ch[i] = cv::Mat::zeros(realH / 2, realW / 2, CV_32F);
+
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+            int color = colors[r % 2][c % 2];
+
+            ch[color].at<float>(r / 2, c / 2) = WBImg.at<float>(r, c);
+        }
+    }
+
+    std::cout << "WB 후 채널별 평균 ";
+    for (int i = 0; i < 4; i++) std::cout << i << ": " << cv::mean(ch[i])[0] << ", ";
+    std::cout << std::endl;
 
     return 0;
 }
