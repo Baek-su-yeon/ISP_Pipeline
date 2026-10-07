@@ -29,9 +29,8 @@ bool save (std::string outdir, std::string name, const cv::Mat& img) {
 }
 
 cv::Mat printDiff (const cv::Mat& img1, const cv::Mat& img2) {
-    // 비교용: 직접 구현(real)과 OpenCV convertTo(real8)의 차이
     cv::Mat diff;
-    cv::absdiff(img1, img2, diff);   // 화소별 |real - real8|
+    cv::absdiff(img1, img2, diff);
 
     double minDiff, maxDiff;
     cv::minMaxLoc(diff, &minDiff, &maxDiff);
@@ -77,8 +76,8 @@ int main (int argc, char* argv[]) {
     int WL = ip.imgdata.color.maximum;
     int BL = ip.imgdata.color.black;
     
-    unsigned patternR = ip.imgdata.color.cblack[4];
-    unsigned patternC = ip.imgdata.color.cblack[5];
+    int patternR = ip.imgdata.color.cblack[4];
+    int patternC = ip.imgdata.color.cblack[5];
     std::cout << "Black pattern size: " << patternR << " x " << patternC << std::endl;
 
     int bases[2][2];
@@ -113,24 +112,7 @@ int main (int argc, char* argv[]) {
     normImg.convertTo(normImg8, CV_8UC1, 255.0);
     if(!save(outdir, "normImg.png", normImg8)) return 1;
 
-    // 0-2 흑백 이미지와 비교 (파일 이름은 0-2에서 저장한 이름으로 바꾸기)
-    std::string refPath = fs::path(outdir) / "real.png";
-    cv::Mat ref = cv::imread(refPath, cv::IMREAD_GRAYSCALE);
-    if (ref.empty()) {
-        std::cerr << "Failed to read: " << refPath << std::endl;
-        return 1;
-    }
-    if (ref.size() != normImg8.size()) {
-        std::cerr << "Size mismatch: " << ref.size() << " vs " << normImg8.size() << std::endl;
-        return 1;
-    }
-
-    cv::Mat diffImg = printDiff(normImg8, ref);
-    if (!save(outdir, "diff_norm_vs_raw.png", diffImg)) return 1;
-
-    cv::Mat mask = normImg == 1.0;
-    int non_zero = cv::countNonZero(mask);
-    std::cout << "Pixels at 1.0: "<< non_zero <<std::endl;
+    
 
     return 0;
 }
