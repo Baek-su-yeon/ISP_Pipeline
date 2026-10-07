@@ -1,3 +1,4 @@
+#include <vector>
 #include <iostream>
 #include <libraw/libraw.h>
 #include <opencv2/core.hpp>
@@ -140,6 +141,31 @@ int main (int argc, char* argv[]) {
     cv::Mat WBClip;
     cv::min(WBImg, 1.0f, WBClip);
 
+    
+    cv::Mat Demosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // RGB로 저장 나중에 변환
+    for (int r = 1; r < realH - 1; r++) {
+        for (int c = 1; c < realW - 1; c++) {
+            int color = colors[r % 2][c % 2];
+
+            if (color == 0) {
+                // R
+                for (int i = 0; i < 3; i++) {
+                    if(i == color) Demosaic.at<cv::Vec3f>[i](r, c) = WBClip.at<float>(r, c);
+                } 
+            }
+            else if (color == 1) {
+                // G_R
+
+            }
+            else if (color == 2) {
+                // B
+            }
+            else {
+                // G_B
+
+            }
+        }
+    }
 
     return 0;
 }
