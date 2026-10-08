@@ -93,15 +93,15 @@ cv::Vec3f ReflectionDemosaic(int r, int c, const int (&colors)[2][2], const cv::
         int rr = r + dr[i];
         int cc = c + dc[i];
         
-        // if (rr < 0) rr *= (-1);
-        // else if (img.rows <= rr) rr -= 2;
+        if (rr < 0) rr *= (-1);
+        else if (img.rows <= rr) rr -= 2;
         
-        // if (cc < 0) cc *= (-1);
-        // else if (img.cols <= cc) cc -= 2;
+        if (cc < 0) cc *= (-1);
+        else if (img.cols <= cc) cc -= 2;
 
         // 잘못된 좌표 변환
-        if (rr < 0 || img.rows <= rr) rr *= (-1);
-        if (cc < 0 || img.cols <= cc) cc *= (-1);
+        // if (rr < 0 || img.rows <= rr) rr *= (-1);
+        // if (cc < 0 || img.cols <= cc) cc *= (-1);
 
         int ch = colors[rr % 2][cc % 2];
         if (ch == 3) ch = 1;
@@ -216,25 +216,30 @@ int main (int argc, char* argv[]) {
     cv::Mat WBClip;
     cv::min(WBImg, 1.0f, WBClip);
     
-    cv::Mat OutlineIgnoreDemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
-    cv::Mat ReflectionDemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
+    cv::Mat outlineignoredemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
+    cv::Mat reflectiondemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
     for (int r = 1; r < realH - 1; r++) {
         for (int c = 1; c < realW - 1; c++) {
-            OutlineIgnoreDemosaic.at<cv::Vec3f>(r, c) = OutlineIgnoreDemosaic(r, c, colors, WBClip);
-            ReflectionDemosaic.at<cv::Vec3f>(r, c) = ReflectionDemosaic(r, c, colors, WBClip);
+            outlineignoredemosaic.at<cv::Vec3f>(r, c) = OutlineIgnoreDemosaic(r, c, colors, WBClip);
+        }
+    }
+
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+             reflectiondemosaic.at<cv::Vec3f>(r, c) = ReflectionDemosaic(r, c, colors, WBClip);
         }
     }
     
     // 저장용: OpenCV는 BGR 순서로 저장하므로 바꾼 뒤 8비트로
     cv::Mat demBGR, dem8;
-    cv::cvtColor(OutlineIgnoreDemosaic, demBGR, cv::COLOR_RGB2BGR);
+    cv::cvtColor(outlineignoredemosaic, demBGR, cv::COLOR_RGB2BGR);
     demBGR.convertTo(dem8, CV_8UC3, 255.0);
     if (!save(outdir, "demosaic.png", dem8)) return 1;
 
-    cv::cvtColor(ReflectionDemosaic, demBGR, cv::COLOR_RGB2BGR);
+    cv::cvtColor(reflectiondemosaic, demBGR, cv::COLOR_RGB2BGR);
     demBGR.convertTo(dem8, CV_8UC3, 255.0);
-    if (!save(outdir, "incorrect_reflection_demosaic.png", dem8)) return 1;
-    // if (!save(outdir, "reflection_demosaic.png", dem8)) return 1;
+    // if (!save(outdir, "incorrect_reflection_demosaic.png", dem8)) return 1;
+    if (!save(outdir, "reflection_demosaic.png", dem8)) return 1;
     
     // 완성된 이미지 및 코드 검증용
     // std::cout << "Demosaic mean: " << cv::mean(Demosaic) << std::endl;
