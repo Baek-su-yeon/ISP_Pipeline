@@ -1,7 +1,7 @@
-#include <vector>
 #include <iostream>
 #include <libraw/libraw.h>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <filesystem>
 #include <string>
@@ -43,6 +43,36 @@ cv::Mat printDiff (const cv::Mat& img1, const cv::Mat& img2) {
 
     // 차이를 눈으로 보기 위한 그림 (차이 1 → 255로 확대, 다른 화소만 흰색)
     return diff *255;
+}
+
+// 이웃 8칸을 색별로 모아 평균. G_R·G_B는 G 하나로 합친다.
+// 반환: [0] R, [1] G, [2] B
+cv::Vec3f demosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) {
+    const int dr[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    const int dc[8] = {0, -1, -1, -1, 0, 1, 1, 1};
+
+    int own = colors[r % 2][c % 2];
+    if (own == 3) own = 1;
+
+    float sum[3] = {0, 0, 0};
+    int count[3] = {0, 0, 0};
+
+    // 지금은 테두리를 버리므로 rr, cc가 밖으로 나가지 않음
+    for (int i = 0; i < 8; i++) {
+        int rr = r + dr[i];
+        int cc = c + dc[i];
+        int ch = colors[rr % 2][cc % 2];
+        if (ch == 3) ch = 1;
+        if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
+
+        sum[ch] += img.at<float>(rr, cc);
+        count[ch]++;
+    }
+
+    sum[own] = img.at<float>(r, c);
+    count[own] = 1;
+
+    return cv::Vec3f(sum[0] / count[0], sum[1] / count[1], sum[2] / count[2]);
 }
 
 int main (int argc, char* argv[]) {
@@ -140,32 +170,19 @@ int main (int argc, char* argv[]) {
 
     cv::Mat WBClip;
     cv::min(WBImg, 1.0f, WBClip);
-
     
-    cv::Mat Demosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // RGB로 저장 나중에 변환
+    cv::Mat Demosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
     for (int r = 1; r < realH - 1; r++) {
         for (int c = 1; c < realW - 1; c++) {
-            int color = colors[r % 2][c % 2];
-
-            if (color == 0) {
-                // R
-                for (int i = 0; i < 3; i++) {
-                    if(i == color) Demosaic.at<cv::Vec3f>[i](r, c) = WBClip.at<float>(r, c);
-                } 
-            }
-            else if (color == 1) {
-                // G_R
-
-            }
-            else if (color == 2) {
-                // B
-            }
-            else {
-                // G_B
-
-            }
+            Demosaic.at<cv::Vec3f>(r, c) = demosaic(r, c, colors, WBClip);
         }
     }
-
+    
+    // 저장용: OpenCV는 BGR 순서로 저장하므로 바꾼 뒤 8비트로
+    cv::Mat demBGR, dem8;
+    cv::cvtColor(Demosaic, demBGR, cv::COLOR_RGB2BGR);
+    demBGR.convertTo(dem8, CV_8UC3, 255.0);
+    if (!save(outdir, "demosaic.png", dem8)) return 1;
+    
     return 0;
 }
