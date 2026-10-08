@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string>
 #include <algorithm>
+#include <cmath>
 
 namespace fs = std::filesystem;
 
@@ -65,9 +66,6 @@ cv::Vec3f OutlineIgnoreDemosaic(int r, int c, const int (&colors)[2][2], const c
         if (ch == 3) ch = 1;
         if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
 
-        // 이동하는 인덱스 검증용
-        // std::cout << i + 1 <<"번째 Demosaic coor r: " << rr << ", c:" << cc << ", color:" << ch << std::endl;
-
         sum[ch] += img.at<float>(rr, cc);
         count[ch]++;
     }
@@ -93,22 +91,15 @@ cv::Vec3f ReflectionDemosaic(int r, int c, const int (&colors)[2][2], const cv::
         int rr = r + dr[i];
         int cc = c + dc[i];
         
-        // if (rr < 0) rr *= (-1);
-        // else if (img.rows <= rr) rr -= 2;
+        if (rr < 0) rr *= (-1);
+        else if (img.rows <= rr) rr -= 2;
         
-        // if (cc < 0) cc *= (-1);
-        // else if (img.cols <= cc) cc -= 2;
-
-        // 잘못된 좌표 변환
-        if (rr < 0 || img.rows <= rr) rr *= (-1);
-        if (cc < 0 || img.cols <= cc) cc *= (-1);
+        if (cc < 0) cc *= (-1);
+        else if (img.cols <= cc) cc -= 2;
 
         int ch = colors[rr % 2][cc % 2];
         if (ch == 3) ch = 1;
         if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
-
-        // 이동하는 인덱스 검증용
-        // std::cout << i + 1 <<"번째 Demosaic coor r: " << rr << ", c:" << cc << ", color:" << ch << std::endl;
 
         sum[ch] += img.at<float>(rr, cc);
         count[ch]++;
@@ -118,6 +109,16 @@ cv::Vec3f ReflectionDemosaic(int r, int c, const int (&colors)[2][2], const cv::
     count[own] = 1;
 
     return cv::Vec3f(sum[0] / count[0], sum[1] / count[1], sum[2] / count[2]);
+}
+
+// 입력 x: 선형 값 0~1, 반환: 감마 적용 값 0~1
+float GammaExp(float x) {
+    return std::pow(x, 1.0f / 2.2f);
+}
+
+float GammaSRGB(float x) {
+    if (x <= 0.0031308f) return 12.92f * x;                  // 어두운 구간: 직선
+    return 1.055f * std::pow(x, 1.0f / 2.4f) - 0.055f;       // 나머지: 거듭제곱
 }
 
 int main (int argc, char* argv[]) {
@@ -216,35 +217,51 @@ int main (int argc, char* argv[]) {
     cv::Mat WBClip;
     cv::min(WBImg, 1.0f, WBClip);
     
-    cv::Mat Demosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
+    cv::Mat reflectiondemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
     for (int r = 0; r < realH; r++) {
         for (int c = 0; c < realW; c++) {
-            Demosaic.at<cv::Vec3f>(r, c) = ReflectionDemosaic(r, c, colors, WBClip);
+             reflectiondemosaic.at<cv::Vec3f>(r, c) = ReflectionDemosaic(r, c, colors, WBClip);
         }
     }
     
     // 저장용: OpenCV는 BGR 순서로 저장하므로 바꾼 뒤 8비트로
-    cv::Mat demBGR, dem8;
-    cv::cvtColor(Demosaic, demBGR, cv::COLOR_RGB2BGR);
-    demBGR.convertTo(dem8, CV_8UC3, 255.0);
-    if (!save(outdir, "incorrect_reflection_demosaic.png", dem8)) return 1;
+    // cv::Mat demBGR, dem8;
+    // cv::cvtColor(outlineignoredemosaic, demBGR, cv::COLOR_RGB2BGR);
+    // demBGR.convertTo(dem8, CV_8UC3, 255.0);
+    // if (!save(outdir, "demosaic.png", dem8)) return 1;
+
+    // cv::cvtColor(reflectiondemosaic, demBGR, cv::COLOR_RGB2BGR);
+    // demBGR.convertTo(dem8, CV_8UC3, 255.0);
     // if (!save(outdir, "reflection_demosaic.png", dem8)) return 1;
-    
-    // 완성된 이미지 및 코드 검증용
-    // std::cout << "Demosaic mean: " << cv::mean(Demosaic) << std::endl;
 
-    // Demosaic.at<cv::Vec3f>(0, 0) = ReflectionDemosaic(0, 0, colors, WBClip);
-    // Demosaic.at<cv::Vec3f>(realH - 1, realW - 1) = ReflectionDemosaic(realH - 1, realW - 1, colors, WBClip);
-    
-    
-    // cv::Mat ch[4];
-    // for (int i = 0; i < 4; i++) ch[i] = cv::Mat::zeros(realH / 2, realW / 2, CV_32F);
-    
-    // for (int r = 0; r < realH; r++)
-    //     for (int c = 0; c < realW; c++)
-    //         ch[colors[r % 2][c % 2]].at<float>(r / 2, c / 2) = WBClip.at<float>(r, c);
+    double target[5] = {0.001, 0.0031308, 0.18, 0.5, 1.0};
+    for (const auto& temp : target) {
+        std::cout << "input: " << temp << ", Exp: " << GammaExp(temp) << ", sRGB: " << GammaSRGB(temp) << std::endl;
+    }
 
-    // for (int i = 0; i < 4; i ++) std::cout << "WBClip ch " << i << ": " << cv::mean(ch[i]) << " "; 
+    cv::Mat gamExpImg = cv::Mat::zeros(realH, realW, CV_32FC3);
+    cv::Mat gamsRGBImg = cv::Mat::zeros(realH, realW, CV_32FC3);
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+            const cv::Vec3f& v = reflectiondemosaic.at<cv::Vec3f>(r, c);
+            cv::Vec3f& e = gamExpImg.at<cv::Vec3f>(r, c);
+            cv::Vec3f& s = gamsRGBImg.at<cv::Vec3f>(r, c);
 
+            for (int k = 0; k < 3; k++) {
+                e[k] = GammaExp(v[k]);
+                s[k] = GammaSRGB(v[k]);
+            }
+        }
+    }
+
+    cv::Mat gamBGR, gam8;
+    cv::cvtColor(gamExpImg, gamBGR, cv::COLOR_RGB2BGR);
+    gamBGR.convertTo(gam8, CV_8UC3, 255.0);
+    if (!save(outdir, "gamExpImg.png", gam8)) return 1;
+
+    cv::cvtColor(gamsRGBImg, gamBGR, cv::COLOR_RGB2BGR);
+    gamBGR.convertTo(gam8, CV_8UC3, 255.0);
+    if (!save(outdir, "gamsRGBImg.png", gam8)) return 1;
+    
     return 0;
 }
