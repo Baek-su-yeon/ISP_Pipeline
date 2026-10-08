@@ -65,6 +65,9 @@ cv::Vec3f demosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) 
         if (ch == 3) ch = 1;
         if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
 
+        // 이동하는 인덱스 검증용
+        // std::cout << i + 1 <<"번째 Demosaic coor r: " << rr << ", c:" << cc << ", color:" << ch << std::endl;
+
         sum[ch] += img.at<float>(rr, cc);
         count[ch]++;
     }
@@ -184,5 +187,21 @@ int main (int argc, char* argv[]) {
     demBGR.convertTo(dem8, CV_8UC3, 255.0);
     if (!save(outdir, "demosaic.png", dem8)) return 1;
     
+    // 완성된 이미지 및 코드 검증용
+    // std::cout << "Demosaic mean: " << cv::mean(Demosaic) << std::endl;
+
+    // Demosaic.at<cv::Vec3f>(1, 2) = demosaic(1, 2, colors, WBClip);
+    // Demosaic.at<cv::Vec3f>(2, 1) = demosaic(2, 1, colors, WBClip);
+    
+    
+    // cv::Mat ch[4];
+    // for (int i = 0; i < 4; i++) ch[i] = cv::Mat::zeros(realH / 2, realW / 2, CV_32F);
+    
+    // for (int r = 0; r < realH; r++)
+    //     for (int c = 0; c < realW; c++)
+    //         ch[colors[r % 2][c % 2]].at<float>(r / 2, c / 2) = WBClip.at<float>(r, c);
+
+    // for (int i = 0; i < 4; i ++) std::cout << "WBClip ch " << i << ": " << cv::mean(ch[i]) << " "; 
+
     return 0;
 }
