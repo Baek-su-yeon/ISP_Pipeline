@@ -47,7 +47,7 @@ cv::Mat printDiff (const cv::Mat& img1, const cv::Mat& img2) {
 
 // 이웃 8칸을 색별로 모아 평균. G_R·G_B는 G 하나로 합친다.
 // 반환: [0] R, [1] G, [2] B
-cv::Vec3f demosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) {
+cv::Vec3f OutlineIgnoreDemosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) {
     const int dr[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
     const int dc[8] = {0, -1, -1, -1, 0, 1, 1, 1};
 
@@ -61,6 +61,48 @@ cv::Vec3f demosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) 
     for (int i = 0; i < 8; i++) {
         int rr = r + dr[i];
         int cc = c + dc[i];
+        int ch = colors[rr % 2][cc % 2];
+        if (ch == 3) ch = 1;
+        if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
+
+        // 이동하는 인덱스 검증용
+        // std::cout << i + 1 <<"번째 Demosaic coor r: " << rr << ", c:" << cc << ", color:" << ch << std::endl;
+
+        sum[ch] += img.at<float>(rr, cc);
+        count[ch]++;
+    }
+
+    sum[own] = img.at<float>(r, c);
+    count[own] = 1;
+
+    return cv::Vec3f(sum[0] / count[0], sum[1] / count[1], sum[2] / count[2]);
+}
+
+cv::Vec3f ReflectionDemosaic(int r, int c, const int (&colors)[2][2], const cv::Mat& img) {
+    const int dr[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    const int dc[8] = {0, -1, -1, -1, 0, 1, 1, 1};
+
+    int own = colors[r % 2][c % 2];
+    if (own == 3) own = 1;
+
+    float sum[3] = {0, 0, 0};
+    int count[3] = {0, 0, 0};
+
+    // 반사로 바뀌었으므로 배열 밖에 나가는 것 주의
+    for (int i = 0; i < 8; i++) {
+        int rr = r + dr[i];
+        int cc = c + dc[i];
+        
+        // if (rr < 0) rr *= (-1);
+        // else if (img.rows <= rr) rr -= 2;
+        
+        // if (cc < 0) cc *= (-1);
+        // else if (img.cols <= cc) cc -= 2;
+
+        // 잘못된 좌표 변환
+        if (rr < 0 || img.rows <= rr) rr *= (-1);
+        if (cc < 0 || img.cols <= cc) cc *= (-1);
+
         int ch = colors[rr % 2][cc % 2];
         if (ch == 3) ch = 1;
         if (ch == own) continue;   // 자기 색은 자기 값만 씀 (G 위치의 대각선 G 제외)
@@ -174,24 +216,34 @@ int main (int argc, char* argv[]) {
     cv::Mat WBClip;
     cv::min(WBImg, 1.0f, WBClip);
     
-    cv::Mat Demosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
+    cv::Mat OutlineIgnoreDemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
+    cv::Mat ReflectionDemosaic = cv::Mat::zeros(realH, realW, CV_32FC3); // [0] R, [1] G, [2] B
     for (int r = 1; r < realH - 1; r++) {
         for (int c = 1; c < realW - 1; c++) {
-            Demosaic.at<cv::Vec3f>(r, c) = demosaic(r, c, colors, WBClip);
+            OutlineIgnoreDemosaic.at<cv::Vec3f>(r, c) = OutlineIgnoreDemosaic(r, c, colors, WBClip);
+            ReflectionDemosaic.at<cv::Vec3f>(r, c) = ReflectionDemosaic(r, c, colors, WBClip);
         }
     }
     
     // 저장용: OpenCV는 BGR 순서로 저장하므로 바꾼 뒤 8비트로
     cv::Mat demBGR, dem8;
-    cv::cvtColor(Demosaic, demBGR, cv::COLOR_RGB2BGR);
+    cv::cvtColor(OutlineIgnoreDemosaic, demBGR, cv::COLOR_RGB2BGR);
     demBGR.convertTo(dem8, CV_8UC3, 255.0);
     if (!save(outdir, "demosaic.png", dem8)) return 1;
+
+    cv::cvtColor(ReflectionDemosaic, demBGR, cv::COLOR_RGB2BGR);
+    demBGR.convertTo(dem8, CV_8UC3, 255.0);
+    if (!save(outdir, "incorrect_reflection_demosaic.png", dem8)) return 1;
+    // if (!save(outdir, "reflection_demosaic.png", dem8)) return 1;
     
     // 완성된 이미지 및 코드 검증용
     // std::cout << "Demosaic mean: " << cv::mean(Demosaic) << std::endl;
 
-    // Demosaic.at<cv::Vec3f>(1, 2) = demosaic(1, 2, colors, WBClip);
-    // Demosaic.at<cv::Vec3f>(2, 1) = demosaic(2, 1, colors, WBClip);
+    // OutlineIgnoreDemosaic.at<cv::Vec3f>(1, 2) = OutlineIgnoreDemosaic(1, 2, colors, WBClip);
+    // OutlineIgnoreDemosaic.at<cv::Vec3f>(2, 1) = OutlineIgnoreDemosaic(2, 1, colors, WBClip);
+    
+    // ReflectionDemosaic.at<cv::Vec3f>(0, 0) = ReflectionDemosaic(0, 0, colors, WBClip);
+    // ReflectionDemosaic.at<cv::Vec3f>(realH - 1, realW - 1) = ReflectionDemosaic(realH - 1, realW - 1, colors, WBClip);
     
     
     // cv::Mat ch[4];
