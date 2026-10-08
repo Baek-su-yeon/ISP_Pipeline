@@ -263,5 +263,40 @@ int main (int argc, char* argv[]) {
     gamBGR.convertTo(gam8, CV_8UC3, 255.0);
     if (!save(outdir, "gamsRGBImg.png", gam8)) return 1;
     
+    // 감마 검증: 입력값 기준으로 구간을 나눠 첫 화소 출력 + 구간별 개수
+    const float thr = 0.0031308f;
+    bool foundLin = false, foundPow = false;
+    long long cntZero = 0, cntLin = 0, cntPow = 0;
+    
+    auto printPixel = [&](const char* name, int r, int c, int k, float x) {
+        std::cout << name << " (" << r << ", " << c << ") ch " << k
+                  << " | input: " << x
+                  << ", sRGB: " << gamsRGBImg.at<cv::Vec3f>(r, c)[k]
+                  << ", Exp: " << gamExpImg.at<cv::Vec3f>(r, c)[k] << std::endl;
+    };
+    
+    for (int r = 0; r < realH; r++) {
+        for (int c = 0; c < realW; c++) {
+            const cv::Vec3f& v = reflectiondemosaic.at<cv::Vec3f>(r, c);
+            for (int k = 0; k < 3; k++) {
+                float x = v[k];
+                if (x == 0.0f) { cntZero++; continue; }   // 0은 두 식 모두 0이라 분기 확인 불가
+    
+                if (x <= thr) {
+                    cntLin++;
+                    if (!foundLin) { printPixel("linear", r, c, k, x); foundLin = true; }
+                } else {
+                    cntPow++;
+                    if (!foundPow) { printPixel("power ", r, c, k, x); foundPow = true; }
+                }
+            }
+        }
+    }
+    
+    long long total = static_cast<long long>(realH) * realW * 3;
+    std::cout << "zero: "   << cntZero << " (" << 100.0 * cntZero / total << "%)"
+              << ", linear: " << cntLin  << " (" << 100.0 * cntLin  / total << "%)"
+              << ", power: "  << cntPow  << " (" << 100.0 * cntPow  / total << "%)" << std::endl;
+    
     return 0;
 }
