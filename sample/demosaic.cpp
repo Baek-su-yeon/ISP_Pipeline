@@ -242,13 +242,14 @@ int main (int argc, char* argv[]) {
     if (!save(outdir, "reflection_demosaic.png", dem8)) return 1;
     
     // 완성된 이미지 및 코드 검증용
-    // std::cout << "Demosaic mean: " << cv::mean(Demosaic) << std::endl;
+    // std::cout << "outlineignoredemosaic mean: " << cv::mean(outlineignoredemosaic) << std::endl;
+    // std::cout << "reflectiondemosaic mean: " << cv::mean(reflectiondemosaic) << std::endl;
 
-    // OutlineIgnoreDemosaic.at<cv::Vec3f>(1, 2) = OutlineIgnoreDemosaic(1, 2, colors, WBClip);
-    // OutlineIgnoreDemosaic.at<cv::Vec3f>(2, 1) = OutlineIgnoreDemosaic(2, 1, colors, WBClip);
+    // outlineignoredemosaic.at<cv::Vec3f>(1, 2) = OutlineIgnoreDemosaic(1, 2, colors, WBClip);
+    // outlineignoredemosaic.at<cv::Vec3f>(2, 1) = OutlineIgnoreDemosaic(2, 1, colors, WBClip);
     
-    // ReflectionDemosaic.at<cv::Vec3f>(0, 0) = ReflectionDemosaic(0, 0, colors, WBClip);
-    // ReflectionDemosaic.at<cv::Vec3f>(realH - 1, realW - 1) = ReflectionDemosaic(realH - 1, realW - 1, colors, WBClip);
+    // reflectiondemosaic.at<cv::Vec3f>(0, 0) = ReflectionDemosaic(0, 0, colors, WBClip);
+    // reflectiondemosaic.at<cv::Vec3f>(realH - 1, realW - 1) = ReflectionDemosaic(realH - 1, realW - 1, colors, WBClip);
     
     
     // cv::Mat ch[4];
