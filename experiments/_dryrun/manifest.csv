@@ -1,0 +1,4 @@
+# 선택 기준: 개발 시험용 2장을 직접 지정 (a0001 Nikon D70 BGGR 여백 없음, a0005 RGGB Black Level 127·128 여백 top 12·left 74), 장수 2, 시드 없음, 날짜 2026-10-10
+id,path
+a0001,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0001-jmac_DSC1459.dng
+a0005,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0005-jn_2007_05_10__564.dng
