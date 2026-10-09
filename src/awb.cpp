@@ -1,4 +1,7 @@
 #include "awb.h"
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace {
 
@@ -10,6 +13,7 @@ constexpr int CH_R = 0;
 constexpr int CH_G = 1;
 constexpr int CH_B = 2;
 constexpr int CH_G2 = 3;
+constexpr double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
 
 int toRgbChannel(int color)
 {
@@ -80,4 +84,34 @@ HalfStats computeHalfStats(const cv::Mat& norm, const int (&colors)[2][2])
         }
     }
     return hs;
+}
+
+std::optional<Illum> illumFromGain(const Gain& gain)
+{
+    if (gain.r <= 0.0 || gain.g <= 0.0 || gain.b <= 0.0) return std::nullopt;
+    return Illum{1.0 / gain.r, 1.0 / gain.g, 1.0 / gain.b};
+}
+
+std::optional<Gain> illumToGain(const Illum& illum)
+{
+    if (illum.r <= 0.0 || illum.g <= 0.0 || illum.b <= 0.0) return std::nullopt;
+    return Gain{illum.g / illum.r, 1.0, illum.g / illum.b};
+}
+
+std::optional<Illum> normalizeToG(const Illum& illum)
+{
+    if (illum.g <= 0.0) return std::nullopt;
+    return Illum{illum.r / illum.g, 1.0, illum.b / illum.g};
+}
+
+double angularError(const Illum& est, const Illum& ref)
+{
+    const double dot = est.r * ref.r + est.g * ref.g + est.b * ref.b;
+    const double norm_est = std::sqrt(est.r * est.r + est.g * est.g + est.b * est.b);
+    const double norm_ref = std::sqrt(ref.r * ref.r + ref.g * ref.g + ref.b * ref.b);
+    if (norm_est <= 0.0 || norm_ref <= 0.0) return std::numeric_limits<double>::quiet_NaN();
+
+    // 반올림으로 1을 살짝 넘으면 acos가 NaN이 되므로 자른다
+    const double cos_theta = std::clamp(dot / (norm_est * norm_ref), -1.0, 1.0);
+    return std::acos(cos_theta) * RAD_TO_DEG;
 }
