@@ -1,0 +1,6 @@
+light,outdoor,indoor,unknown,None,total
+sun_sky,3327,61,16,0,3404
+artificial,68,651,46,0,765
+mixed,68,257,187,0,512
+None,130,86,28,75,319
+total,3593,1055,277,75,5000
