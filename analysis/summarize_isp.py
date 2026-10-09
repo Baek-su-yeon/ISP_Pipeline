@@ -121,11 +121,13 @@ def compute_time_histogram(results, n_bins):
 
 
 def plot_max8_distribution(dist, n_total):
-    fig, ax = plt.subplots(figsize=(max(5, 0.6 * len(dist) + 2), 4.5))
-    bars = ax.bar(dist["max8"].astype(str), dist["n"])
-    ax.bar_label(bars)
+    """max8 값(0~255)별 장수. y축은 로그 (0과 1 근처에 몰려 있어서), 장수가 0이 아닌 막대에만 라벨."""
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    bars = ax.bar(dist["max8"], dist["n"], width=1.0)
+    ax.set_yscale("log")
+    ax.bar_label(bars, labels=[str(n) if n > 0 else "" for n in dist["n"]], fontsize=7, rotation=90, padding=2)
     ax.set_xlabel("max 8-bit difference per photo (max over R,G,B)")
-    ax.set_ylabel("number of photos")
+    ax.set_ylabel("number of photos (log scale)")
     ax.set_title(f"our ISP vs LibRaw: max8 (n={n_total})")
     return fig
 
