@@ -3,6 +3,51 @@
 #include <iostream>
 #include "utils.h"
 
+// LibRaw 파일 열기 → 열린 상태 그대로 info에 옮긴다
+bool readRawInfo(LibRaw& ip, const std::string& path, RawInfo& info, std::string& error) {
+    const int ret = ip.open_file(path.c_str());
+    if (ret != LIBRAW_SUCCESS) {
+        error = LibRaw::strerror(ret);
+        return false;
+    }
+
+    const libraw_iparams_t& idata = ip.imgdata.idata;
+    const libraw_colordata_t& color = ip.imgdata.color;
+    const libraw_image_sizes_t& sizes = ip.imgdata.sizes;
+
+    info.make = idata.make;
+    info.model = idata.model;
+    info.iso = ip.imgdata.other.iso_speed;
+
+    // filters가 1000 미만이면 2x2 Bayer가 아니다 (0: 없음, 1: Leaf, 9: X-Trans)
+    if (idata.filters < 1000) {
+        info.pattern = "non-bayer:" + std::to_string(idata.filters);
+    } else {
+        info.pattern.clear();
+        for (int r = 0; r < 2; r++) {
+            for (int c = 0; c < 2; c++) info.pattern += idata.cdesc[ip.COLOR(r, c)];
+        }
+    }
+
+    info.black = color.black;
+    for (int i = 0; i < 6; i++) info.cblack[i] = color.cblack[i];
+    info.white = color.maximum;
+    for (int i = 0; i < 4; i++) info.cam_mul[i] = color.cam_mul[i];
+
+    info.raw_w = sizes.raw_width;
+    info.raw_h = sizes.raw_height;
+    info.w = sizes.width;
+    info.h = sizes.height;
+    info.top_margin = sizes.top_margin;
+    info.left_margin = sizes.left_margin;
+
+    info.colors = idata.colors;
+    info.filters = idata.filters;
+
+    info.ok = true;
+    return true;
+}
+
 bool loadRaw(LibRaw& ip, const std::string& path, RawMeta& meta, const unsigned short*& rawImg) {
     int ret = ip.open_file(path.c_str());
     if (!check(ret)) return false;
