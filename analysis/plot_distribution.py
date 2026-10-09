@@ -8,7 +8,7 @@
     figures/dist_<이름>.png 와 같은 이름의 .csv   (subject, light, location, time, model, iso)
     pattern_black_white.csv    패턴 × Black Level 유무 × White Level 조합별 장수
     cross_light_location.csv   빛 × 위치
-    cross_model_iso_bin.csv    카메라 모델 × ISO 구간
+    cross_model_iso_step.csv   카메라 모델 × ISO 단계
     figures/cramers_v.png/.csv     주제·빛·위치·시간·카메라(상위 10 + other) 5×5 Cramér's V
     figures/cramers_v_n.csv        각 쌍의 계산에 쓴 장수 (EXCLUDE_LABELS 제외 후)
     figures/heatmap_<행>_<열>.png/.csv   빛×위치, 빛×주제, 빛×카메라 장수 (MIN_CELL_N 미만 칸은 회색)
@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from build_index import ISO_STEP_OTHER, ISO_STEPS  # noqa: E402
+
 DEFAULT_INDEX = "data/index.csv"
 DEFAULT_OUT = "experiments/00_dataset"
 
@@ -32,7 +34,7 @@ SEMANTIC_COLUMNS = ["subject", "light", "location", "time"]
 TOP_N_MODELS = 10          # 카메라 모델 그래프: 장수 상위 N종 + 기타
 OTHER_LABEL = "other"
 ISO_N_BINS = 30            # ISO 히스토그램 구간 수 (로그 간격)
-ISO_BIN_ORDER = ["low", "mid", "high"]
+ISO_STEP_ORDER = [str(step) for step in ISO_STEPS] + [ISO_STEP_OTHER]
 FIG_DPI = 150
 
 # 연관성·교차표 히트맵
@@ -43,8 +45,8 @@ HEATMAP_PAIRS = [("light", "location"), ("light", "subject"), ("light", "camera"
 
 
 def load_index(path):
-    """색인 읽기. 'None' 글자를 NaN으로 바꾸지 않는다."""
-    return pd.read_csv(path, keep_default_na=False)
+    """색인 읽기. 'None' 글자를 NaN으로 바꾸지 않고, iso_step은 문자열로 읽는다."""
+    return pd.read_csv(path, keep_default_na=False, dtype={"iso_step": str})
 
 
 def compute_label_counts(index, column):
@@ -85,9 +87,9 @@ def compute_crosstab(index, row, col):
 
 
 def compute_model_iso_crosstab(index):
-    """카메라 모델 × ISO 구간 (열 순서 low, mid, high)."""
-    table = compute_crosstab(index, "model", "iso_bin")
-    return table.reindex(columns=ISO_BIN_ORDER + ["total"], fill_value=0)
+    """카메라 모델 × ISO 단계 (열 순서 100, 200, 400, 800, 1600, other)."""
+    table = compute_crosstab(index, "model", "iso_step")
+    return table.reindex(columns=ISO_STEP_ORDER + ["total"], fill_value=0)
 
 
 def compute_camera_group(index, top_n):
@@ -156,16 +158,14 @@ def plot_label_bars(counts, column, n_total):
     return fig
 
 
-def plot_iso_histogram(hist, n_total, iso_edges):
-    """ISO 히스토그램(x축 로그)을 그려 figure를 돌려준다. iso_edges는 iso_bin 경계 (세로 점선)."""
+def plot_iso_histogram(hist, n_total):
+    """ISO 히스토그램(x축 로그)을 그려 figure를 돌려준다."""
     fig, ax = plt.subplots(figsize=(7, 4.5))
     ax.bar(hist["iso_low"], hist["n"], width=hist["iso_high"] - hist["iso_low"], align="edge", edgecolor="white")
-    for edge in iso_edges:
-        ax.axvline(edge, color="gray", linestyle="--", linewidth=1)
     ax.set_xscale("log")
     ax.set_xlabel("ISO (log scale)")
     ax.set_ylabel("number of photos")
-    ax.set_title(f"iso (n={n_total}, dashed = iso_bin edges)")
+    ax.set_title(f"iso (n={n_total})")
     return fig
 
 
@@ -229,8 +229,6 @@ def main():
     parser = argparse.ArgumentParser(description="데이터셋 분포 그림과 교차표를 만든다")
     parser.add_argument("--index", default=DEFAULT_INDEX, help="색인 csv")
     parser.add_argument("--out", default=DEFAULT_OUT, help="출력 실험 폴더")
-    parser.add_argument("--iso-edges", type=float, nargs="*", default=None,
-                        help="ISO 히스토그램에 그릴 iso_bin 경계 (기본: build_index.py의 상수)")
     args = parser.parse_args()
 
     index = load_index(args.index)
@@ -249,11 +247,8 @@ def main():
     save_csv(model_counts, fig_dir / "dist_model.csv")
 
     # ISO 히스토그램
-    iso_edges = args.iso_edges
-    if iso_edges is None:
-        iso_edges = default_iso_edges()
     hist = compute_iso_histogram(index, ISO_N_BINS)
-    save_figure(plot_iso_histogram(hist, n_total, iso_edges), fig_dir / "dist_iso.png")
+    save_figure(plot_iso_histogram(hist, n_total), fig_dir / "dist_iso.png")
     save_csv(hist, fig_dir / "dist_iso.csv")
 
     # 표
@@ -262,7 +257,7 @@ def main():
     model_iso = compute_model_iso_crosstab(index)
     save_csv(pattern_table, out / "pattern_black_white.csv")
     save_csv(light_location, out / "cross_light_location.csv", index=True)
-    save_csv(model_iso, out / "cross_model_iso_bin.csv", index=True)
+    save_csv(model_iso, out / "cross_model_iso_step.csv", index=True)
 
     # Cramér's V 히트맵
     variables = {name: index[name] for name in SEMANTIC_COLUMNS}
@@ -287,12 +282,6 @@ def main():
     print(f"pattern × has_black × white 조합 {len(pattern_table)}개")
     print(light_location.to_string())
     print(f"저장: {fig_dir} (막대·히스토그램 6장, V·교차표 히트맵 4장 + csv), {out}/*.csv (표 3개)")
-
-
-def default_iso_edges():
-    """build_index.py의 iso_bin 경계 상수를 가져온다."""
-    from build_index import ISO_LOW_MAX, ISO_MID_MAX
-    return [ISO_LOW_MAX, ISO_MID_MAX]
 
 
 if __name__ == "__main__":

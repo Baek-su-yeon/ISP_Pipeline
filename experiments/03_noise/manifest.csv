@@ -1,0 +1,112 @@
+# camera=EOS 5D+EOS 20D, iso_steps=100/200/400/800/1600, k=10, seed=42, n=100, date=2026-10-10
+# group EOS 5D 100: selected 10 of 85
+# group EOS 5D 200: selected 10 of 151
+# group EOS 5D 400: selected 10 of 185
+# group EOS 5D 800: selected 10 of 97
+# group EOS 5D 1600: selected 10 of 75
+# group EOS 20D 100: selected 10 of 163
+# group EOS 20D 200: selected 10 of 49
+# group EOS 20D 400: selected 10 of 58
+# group EOS 20D 800: selected 10 of 54
+# group EOS 20D 1600: selected 10 of 41
+id,path
+a0030,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0030-_MG_7844.dng
+a0313,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0313-_MG_7253.dng
+a0639,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0639-dvf_010.dng
+a0719,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0719-jmac_MG_5118.dng
+a0915,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0915-MB_060708_204.dng
+a1070,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a1070-_MG_6547.dng
+a3316,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3316-20051225_163230__MG_1390.dng
+a3389,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3389-dvf_004.dng
+a4313,data/fivek/fivek_dataset/raw_photos/HQa4201to5000/photos/a4313-Duggan_080413_6158.dng
+a4608,data/fivek/fivek_dataset/raw_photos/HQa4201to5000/photos/a4608-Duggan_080413_6147.dng
+a0900,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0900-jmac_MG_7376.dng
+a1388,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a1388-jmac_MG_6009.dng
+a2207,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2207-jmac_MG_6896.dng
+a2725,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2725-07-11-21-at-16h55m39s-_MG_5992.dng
+a3212,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3212-_MG_1504.dng
+a3386,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3386-jmac_MG_7601.dng
+a3625,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3625-07-11-11-at-10h53m52s-_MG_4480.dng
+a3644,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3644-jmac_MG_5959.dng
+a3670,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3670-jmac_MG_5917.dng
+a4793,data/fivek/fivek_dataset/raw_photos/HQa4201to5000/photos/a4793-Duggan_090330_6227.dng
+a0459,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0459-jmac_MG_0866.dng
+a0556,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0556-07-08-10-at-19h09m19s-N0000107.dng
+a0709,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0709-07-12-01-at-17h01m35s-_MG_8762.dng
+a1382,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a1382-MB_070908_022.dng
+a1952,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1952-07-12-02-at-12h24m10s-_MG_8944.dng
+a2824,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a2824-dvf_035.dng
+a3080,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3080-jmac_MG_1235.dng
+a3292,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3292-jmac_MG_4914.dng
+a4107,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4107-dvf_018.dng
+a4357,data/fivek/fivek_dataset/raw_photos/HQa4201to5000/photos/a4357-Duggan_090124_4645.dng
+a0019,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0019-jmac_MG_0653.dng
+a0358,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0358-MB_080329_074.dng
+a0708,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0708-20070210_164509__MG_6786.dng
+a1487,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1487-20081226_at_16h52m49__MG_3920.dng
+a1592,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1592-07-06-01-at-14h20m21-s_MG_1284.dng
+a2731,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2731-07-12-01-at-17h40m41s-_MG_8785.dng
+a2881,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a2881-20070514_162430__MG_7345.dng
+a3729,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3729-07-11-24-at-21h39m19s-_MG_6853.dng
+a3764,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3764-20060618_093109__MG_8792.dng
+a4814,data/fivek/fivek_dataset/raw_photos/HQa4201to5000/photos/a4814-Duggan_080114_4419.dng
+a0042,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0042-060813_155838__MG_6361.dng
+a0192,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0192-_MG_7063.dng
+a0681,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0681-060811_183554__MG_6223.dng
+a0825,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0825-_MG_7225.dng
+a1758,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1758-07-07-23-at-23h39m31s-_MG_2497.dng
+a1980,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1980-07-11-08-at-01h16m15s-_MG_4131.dng
+a3603,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3603-MB_080329_055.dng
+a3751,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3751-07-11-04-at-18h05m15s-_MG_4020.dng
+a3859,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3859-_MG_3076.dng
+a4108,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4108-MB_080329_057.dng
+a0775,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0775-kme_423.dng
+a1494,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1494-kme_584.dng
+a1752,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1752-kme_125.dng
+a2659,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2659-kme_238.dng
+a2868,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a2868-IMG_1740.dng
+a3228,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3228-kme_401.dng
+a3565,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3565-kme_223.dng
+a3643,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3643-kme_198.dng
+a3927,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3927-IMG_6048.dng
+a4145,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4145-kme_204.dng
+a1141,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a1141-kme_262.dng
+a1660,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1660-kme_416.dng
+a2091,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a2091-kme_163.dng
+a2694,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2694-IMG_2050.dng
+a2777,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2777-kme_219.dng
+a3053,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3053-kme_135.dng
+a3417,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3417-kme_415.dng
+a3987,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3987-kme_433.dng
+a4015,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4015-kme_168.dng
+a4128,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4128-kme_388.dng
+a0095,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0095-IMG_9199.dng
+a0236,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0236-060526_142240__MG_8129.dng
+a0541,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0541-050618_215910__MG_2944.dng
+a0553,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0553-_MG_2093.dng
+a1521,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1521-kme_400.dng
+a2463,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2463-IMG_0003.dng
+a2639,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2639-_MG_1514.dng
+a3100,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3100-jn_20080524_014.dng
+a3240,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a3240-050620_203534__MG_3224.dng
+a3939,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3939-kme_481.dng
+a0310,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0310-IMG_1898.dng
+a0407,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0407-IMG_8270.dng
+a1252,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a1252-_MG_1415.dng
+a1434,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1434-IMG_1886.dng
+a1628,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1628-060526_142426__MG_8138.dng
+a2886,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a2886-IMG_6623.dng
+a3793,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3793-060528_100224__MG_8218.dng
+a4072,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4072-IMG_0002.dng
+a4078,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4078-MB_060311_020.dng
+a4171,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4171-IMG_1805.dng
+a0558,data/fivek/fivek_dataset/raw_photos/HQa1to700/photos/a0558-kme_395.dng
+a0720,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0720-GrassleyCase-5419.dng
+a0846,data/fivek/fivek_dataset/raw_photos/HQa701to1400/photos/a0846-_MG_0216.dng
+a1508,data/fivek/fivek_dataset/raw_photos/HQa1400to2100/photos/a1508-kme_393.dng
+a2209,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2209-kme_271.dng
+a2606,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2606-_MG_1165.dng
+a2740,data/fivek/fivek_dataset/raw_photos/HQa2101to2800/photos/a2740-060117_180744__MG_7180.dng
+a2980,data/fivek/fivek_dataset/raw_photos/HQa2801to3500/photos/a2980-050704_163414__MG_3491.dng
+a3988,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a3988-_MG_0823.dng
+a4085,data/fivek/fivek_dataset/raw_photos/HQa3501to4200/photos/a4085-_MG_2385.dng
