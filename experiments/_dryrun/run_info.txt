@@ -1,0 +1,12 @@
+git commit: d9ea43bd39b588681133fa1bfc81cb6b921f573f (수정된 파일 있음: no)
+manifest: experiments/_dryrun/manifest.csv
+options: --compare-libraw --no-save --csv
+jobs: 11
+start: 2026-10-10 02:13:41
+end: 2026-10-10 02:13:44
+elapsed_sec: 3
+total: 2
+ok: 2
+fail: 0
+missing: 0
+skipped_in_this_run: 0
