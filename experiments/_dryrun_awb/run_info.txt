@@ -1,0 +1,12 @@
+git commit: af5e1d901db5a0adf5759f7bd147dc2764af6798 (수정된 파일 있음: no)
+manifest: experiments/_dryrun/manifest.csv
+options: --awb-eval --no-save --csv
+jobs: 11
+start: 2026-10-10 06:13:39
+end: 2026-10-10 06:13:40
+elapsed_sec: 1
+total: 2
+ok: 2
+fail: 0
+missing: 0
+skipped_in_this_run: 0

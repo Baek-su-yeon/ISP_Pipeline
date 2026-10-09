@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <optional>
+#include <string>
 #include <opencv2/core.hpp>
 
 // Bayer 2x2 블록 하나를 화소 하나로 줄인 AWB 통계용 이미지
@@ -43,6 +45,16 @@ std::optional<Illum> normalizeToG(const Illum& illum);
 double angularError(const Illum& est, const Illum& ref);
 
 enum class AwbMethod { GW, WP, SOG, GE };
+
+// 방법 4종을 도는 순서. csv 열 순서(gw, wp, sog, ge)와 같다
+inline constexpr std::array<AwbMethod, 4> AWB_METHODS = {
+    AwbMethod::GW, AwbMethod::WP, AwbMethod::SOG, AwbMethod::GE};
+
+// 방법 이름: gw, wp, sog, ge (csv 열 이름·폴더 이름·옵션 값에 쓴다)
+const char* awbMethodName(AwbMethod method);
+
+// 이름 → 방법. 알 수 없는 이름이면 nullopt
+std::optional<AwbMethod> parseAwbMethod(const std::string& name);
 
 // 모두 유효 블록만 사용. 유효 블록이 없거나 입력이 잘못되면 nullopt
 // Gray World: e_c = mean(I_c)

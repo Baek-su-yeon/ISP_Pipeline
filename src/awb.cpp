@@ -264,3 +264,22 @@ std::optional<Illum> estimateIllum(const HalfStats& hs, AwbMethod method)
     }
     return std::nullopt;
 }
+
+const char* awbMethodName(AwbMethod method)
+{
+    switch (method) {
+    case AwbMethod::GW:  return "gw";
+    case AwbMethod::WP:  return "wp";
+    case AwbMethod::SOG: return "sog";
+    case AwbMethod::GE:  return "ge";
+    }
+    return "";
+}
+
+std::optional<AwbMethod> parseAwbMethod(const std::string& name)
+{
+    for (const AwbMethod method : AWB_METHODS) {
+        if (name == awbMethodName(method)) return method;
+    }
+    return std::nullopt;
+}

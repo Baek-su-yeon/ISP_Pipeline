@@ -1,9 +1,13 @@
 #pragma once
 
+#include <array>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 #include <opencv2/core.hpp>
+
+#include "awb.h"
 
 struct RawInfo;
 struct LibRawCompareStats;
@@ -58,7 +62,8 @@ std::string photoId(const std::string& path);
 // 숫자를 csv 값 문자열로 (유효숫자 8자리, 불필요한 0은 없음)
 std::string csvNum(double v);
 
-// 모든 결과 csv의 앞 4열: id,status,error,time_ms. status는 "ok" 또는 "fail"
+// 모든 결과 csv의 앞 4열: id,status,error,time_ms. status는 "ok", "fail", "skip"
+// (skip은 --awb-eval에서 기준 이득이 없을 때만. error에 이유를 담는다)
 // 다른 열은 이 줄 뒤에 emplace_back으로 이어 붙인다
 CsvRow baseCsvRow(const std::string& id, const std::string& status,
                   const std::string& error, long long time_ms);
@@ -73,6 +78,19 @@ CsvRow metaCsvRow(const CsvRow& common, const std::string& path, const RawInfo& 
 
 // --compare-libraw 결과 열: common(baseCsvRow) 뒤에 max8_r,g,b, mae8_r,g,b, max16_r,g,b, n_over1_8을 붙인다
 CsvRow compareCsvRow(const CsvRow& common, const LibRawCompareStats& stats);
+
+// --awb-eval 결과 값. 값이 없는 칸(nullopt)은 csv에서 빈 값이 된다
+struct AwbEvalResult {
+    std::optional<Illum> ref;                                   // 기록 이득의 조명 (G = 1 정규화)
+    std::array<std::optional<Illum>, AWB_METHODS.size()> est;   // 방법별 추정 조명 (G = 1 정규화), AWB_METHODS 순서
+    std::array<std::optional<double>, AWB_METHODS.size()> err;  // 방법별 기준 대비 각도 오차 (도)
+    std::optional<int> n_blocks;                                // 전체 블록 수
+    std::optional<int> n_sat_blocks;                            // 포화 블록 수
+};
+
+// --awb-eval 결과 한 줄: common(baseCsvRow) 뒤에 아래 열을 붙인다. 값이 없으면 빈 값
+// ref_r,ref_g,ref_b, gw_r,gw_g,gw_b,gw_err, wp_..., sog_..., ge_..., n_blocks,n_sat_blocks
+CsvRow awbEvalCsvRow(const CsvRow& common, const AwbEvalResult& result);
 
 // 저장용: 내부 RGB(0~1, CV_32FC3) → BGR 순서로 바꾼 뒤 8비트로 저장
 // OpenCV는 BGR 순서로 저장하므로 저장 직전에만 바꾼다

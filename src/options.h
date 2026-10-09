@@ -1,8 +1,11 @@
 #pragma once
 
 #include <iosfwd>
+#include <optional>
 #include <string>
 #include <vector>
+
+#include "awb.h"
 
 // 실험용 명령행 옵션 모음. main에서 만들어 필요한 곳에 넘긴다 (전역 변수 없음)
 struct Options {
@@ -11,12 +14,16 @@ struct Options {
     bool noBlack = false;         // --no-black: Black Level을 빼지 않음 (실험 2)
     bool wbNoclip = false;        // --wb-noclip: 자르지 않은 WBImg를 Demosaic에 넣음 (실험 3)
     bool quantizeLinear = false;  // --quantize-linear: Demosaic 결과를 8비트로 양자화한 뒤 감마 (밴딩 실험)
+    std::optional<AwbMethod> awbMethod;  // --awb <방법>: 기록 이득 대신 AWB 추정 이득으로 WB (실험)
 
     // 검증 옵션: 실험이 아니라 평소 결과를 LibRaw 기준 이미지와 비교한다 (실험 옵션과 같이 쓸 수 없음)
     bool compareLibraw = false;   // --compare-libraw
 
     // 메타데이터만 기록하는 실행: open_file만 하고 unpack·ISP는 하지 않는다 (--csv 필요)
     bool metaOnly = false;        // --meta-only
+
+    // AWB 평가 실행: 4종 추정 조명과 기록 이득 대비 각도 오차를 기록하고 WB 전에서 끝낸다
+    bool awbEval = false;         // --awb-eval
 
     // 결과를 한 줄로 추가 기록할 csv 경로 (비어 있으면 기록 안 함)
     std::string csvPath;          // --csv <경로>
@@ -26,7 +33,7 @@ struct Options {
 
     // 실험 옵션이 하나라도 켜져 있는지 (켜져 있으면 exp_ 폴더에 저장)
     bool anyExperiment() const {
-        return swapRB || swapRBDemosaic || noBlack || wbNoclip || quantizeLinear;
+        return swapRB || swapRBDemosaic || noBlack || wbNoclip || quantizeLinear || awbMethod.has_value();
     }
 };
 
@@ -38,10 +45,11 @@ ParseResult ParseOptions(int argc, char* argv[], Options& opt, std::string& inpu
 
 void PrintUsage(std::ostream& os, const char* prog);
 
-// 켜진 실험 옵션 이름 ("--" 없이), 고정된 순서: swap-rb, swap-rb-demosaic, no-black, wb-noclip, quantize-linear
+// 켜진 실험 옵션 이름 ("--" 없이), 고정된 순서:
+// swap-rb, swap-rb-demosaic, no-black, wb-noclip, quantize-linear, awb-<방법>
 std::vector<std::string> ExperimentOptions(const Options& opt);
 
-// 켜진 옵션 전체 (실험 옵션 + compare-libraw). 시작할 때 목록 출력용
+// 켜진 옵션 전체 (실험 옵션 + compare-libraw + awb-eval). 시작할 때 목록 출력용
 std::vector<std::string> EnabledOptions(const Options& opt);
 
 // 저장 폴더 이름 (실험 옵션만 반영). 예: exp_no-black_wb-noclip
