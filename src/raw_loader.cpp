@@ -48,16 +48,24 @@ bool readRawInfo(LibRaw& ip, const std::string& path, RawInfo& info, std::string
     return true;
 }
 
-bool loadRaw(LibRaw& ip, const std::string& path, RawMeta& meta, const unsigned short*& rawImg) {
+bool loadRaw(LibRaw& ip, const std::string& path, RawMeta& meta, const unsigned short*& rawImg,
+             std::string* error) {
     int ret = ip.open_file(path.c_str());
-    if (!check(ret)) return false;
+    if (!check(ret)) {
+        if (error) *error = LibRaw::strerror(ret);
+        return false;
+    }
 
     ret = ip.unpack();
-    if (!check(ret)) return false;
+    if (!check(ret)) {
+        if (error) *error = LibRaw::strerror(ret);
+        return false;
+    }
 
     rawImg = ip.imgdata.rawdata.raw_image;
     if (rawImg == nullptr) {
         std::cerr << "Raw img isn't bayer" << std::endl;
+        if (error) *error = "Raw img isn't bayer";
         return false;
     }
 
