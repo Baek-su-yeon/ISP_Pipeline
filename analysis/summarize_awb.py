@@ -15,6 +15,7 @@ ref_*, <방법>_r/g/b는 G=1로 정규화한 조명 색(illum)이고 <방법>_er
     err_pairs.csv                   방법 쌍별 중앙값 차이 + 부트스트랩 95% 구간 (seed, n_boot 기록)
     err_by_<light|subject|location|time>.csv   그룹별 표: 행 = 그룹, 열 = 방법의 중앙값·최악 25%, 장수 n
     direction_median.csv            방법별 dr, db 중앙값
+    direction_by_<time>.csv         그룹별·방법별 dr, db 중앙값 (DIRECTION_GROUP_COLUMNS)
     cross_<light|subject>_camera.csv, cramers_v_camera.csv   교란 확인용 교차표와 Cramér's V
     failure_cases.csv               전체·빛별·주제별 방법별 오차 상위 TOP_N장
     figures/err_box_by_light.png/.csv        방법별·빛별 오차 상자 그림
@@ -53,6 +54,7 @@ DEFAULT_OUT = "experiments/02_awb"
 METHODS = ["gw", "wp", "sog", "ge"]
 GROUP_COLUMNS = ["light", "subject", "location", "time"]   # 그룹별 표의 기준 열
 FAILURE_GROUP_COLUMNS = ["light", "subject"]               # 실패 사례를 그룹별로 뽑는 기준 열
+DIRECTION_GROUP_COLUMNS = ["time"]                         # dr, db 중앙값을 그룹별로 내는 기준 열
 CONFOUNDER_PAIRS = [("light", "camera"), ("subject", "camera")]
 MIN_GROUP_N = 30           # 이 장수 미만인 그룹·칸은 small=True, 히트맵에서 회색
 WORST_FRACTION = 0.25      # "최악 25%"의 비율
@@ -225,6 +227,19 @@ def compute_direction_median(photos):
     """방법별 dr, db 중앙값. 열: method, n, dr_median, db_median"""
     return pd.DataFrame([{"method": m, "n": len(photos), "dr_median": photos[f"{m}_dr"].median(),
                           "db_median": photos[f"{m}_db"].median()} for m in METHODS])
+
+
+def compute_direction_group_table(photos, column):
+    """그룹(column)별·방법별 dr, db 중앙값. 열: <column>, method, n, small, dr_median, db_median (그룹은 장수 많은 순서)"""
+    rows = []
+    for label, group in photos.groupby(column, sort=False):
+        for m in METHODS:
+            rows.append({column: label, "method": m, "n": len(group), "small": len(group) < MIN_GROUP_N,
+                         "dr_median": group[f"{m}_dr"].median(), "db_median": group[f"{m}_db"].median()})
+    table = pd.DataFrame(rows)
+    order = list(photos[column].value_counts().index)
+    table[column] = pd.Categorical(table[column], order, ordered=True)
+    return table.sort_values(column, kind="stable", ignore_index=True).astype({column: str})
 
 
 def compute_direction_points(photos):
@@ -452,6 +467,11 @@ def main():
     # 오차 방향
     medians = compute_direction_median(photos)
     save_csv(medians, out / "direction_median.csv")
+    for column in DIRECTION_GROUP_COLUMNS:
+        table = compute_direction_group_table(photos, column)
+        save_csv(table, out / f"direction_by_{column}.csv")
+        print(f"direction_by_{column}.csv: {table[column].nunique()}그룹")
+        print(table.round(3).to_string(index=False))
     save_figure(plot_direction_scatter(photos, medians), fig_dir / "direction_scatter.png")
     save_csv(compute_direction_points(photos), fig_dir / "direction_scatter.csv")
     print(medians.round(4).to_string(index=False))
