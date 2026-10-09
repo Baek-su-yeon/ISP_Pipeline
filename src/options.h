@@ -21,6 +21,9 @@ struct Options {
     // 결과를 한 줄로 추가 기록할 csv 경로 (비어 있으면 기록 안 함)
     std::string csvPath;          // --csv <경로>
 
+    // true면 png를 저장하지 않는다 (전수 실행용). 숫자만 csv에 남긴다
+    bool noSave = false;          // --no-save
+
     // 실험 옵션이 하나라도 켜져 있는지 (켜져 있으면 exp_ 폴더에 저장)
     bool anyExperiment() const {
         return swapRB || swapRBDemosaic || noBlack || wbNoclip || quantizeLinear;

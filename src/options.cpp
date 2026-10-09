@@ -16,6 +16,7 @@ ParseResult ParseOptions(int argc, char* argv[], Options& opt, std::string& inpu
         else if (arg == "--quantize-linear") opt.quantizeLinear = true;
         else if (arg == "--compare-libraw") opt.compareLibraw = true;
         else if (arg == "--meta-only") opt.metaOnly = true;
+        else if (arg == "--no-save") opt.noSave = true;
         else if (arg == "--csv") {
             if (i + 1 >= argc) {
                 std::cerr << "--csv needs a file path" << std::endl;
@@ -62,12 +63,6 @@ ParseResult ParseOptions(int argc, char* argv[], Options& opt, std::string& inpu
         return ParseResult::Error;
     }
 
-    // --csv로 일반 실행 결과를 기록하는 기능은 아직 없다 (--meta-only와만 사용)
-    if (!opt.csvPath.empty() && !opt.metaOnly) {
-        std::cerr << "--csv can only be used with --meta-only for now" << std::endl;
-        return ParseResult::Error;
-    }
-
     return ParseResult::Ok;
 }
 
@@ -85,6 +80,7 @@ void PrintUsage(std::ostream& os, const char* prog) {
        << "  --meta-only          only read the metadata (no unpack, no ISP) and append one row to --csv\n"
        << "                       (cannot be used with the experiment options or --compare-libraw)\n"
        << "  --csv <path>         csv file to append one result row to (header is written for a new file)\n"
+       << "  --no-save            do not save any png (numbers only)\n"
        << "  --help               show this message\n"
        << "Results with experiment options go to output/img/<name>/exp_<options>/\n"
        << "Results of --compare-libraw go to output/img/<name>/libraw/" << std::endl;
