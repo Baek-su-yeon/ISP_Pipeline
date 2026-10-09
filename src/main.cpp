@@ -1,12 +1,17 @@
 #include <chrono>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <filesystem>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <libraw/libraw.h>
 #include <opencv2/core.hpp>
 
 #include "raw_loader.h"
+#include "awb.h"
 #include "black_level.h"
 #include "white_balance.h"
 #include "demosaic.h"
@@ -74,6 +79,115 @@ static int runMetaOnly(const Options& opt, const std::string& input) {
     return ok ? 0 : 1;
 }
 
+// 콘솔용 고정 소수점 문자열
+static std::string fixedNum(double v, int precision) {
+    std::ostringstream os;
+    os << std::fixed << std::setprecision(precision) << v;
+    return os.str();
+}
+
+// 기록 이득(meta.gains)에서 R 위치·B 위치 값을 읽어 Gain{gain_r, 1, gain_b}로 만든다 (G = 1 기준)
+// R 또는 B 위치를 찾지 못하면 그 이득은 0 (기준 조명 판정에서 걸러진다)
+static Gain recordedGain(const RawMeta& meta) {
+    Gain gain{0.0, 1.0, 0.0};
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            if (meta.colors[r][c] == 0) gain.r = meta.gains[r][c];
+            else if (meta.colors[r][c] == 2) gain.b = meta.gains[r][c];
+        }
+    }
+    return gain;
+}
+
+// 기록 이득이 가리키는 기준 조명 (G = 1 정규화). R·B 이득이 유한하고 0 초과일 때만 있다
+// illumFromGain은 NaN·inf를 거르지 않으므로 여기서 먼저 확인한다
+static std::optional<Illum> referenceIllum(const Gain& gain) {
+    if (!std::isfinite(gain.r) || !std::isfinite(gain.b) || gain.r <= 0.0 || gain.b <= 0.0) {
+        return std::nullopt;
+    }
+    const std::optional<Illum> illum = illumFromGain(gain);
+    if (!illum) return std::nullopt;
+    return normalizeToG(*illum);
+}
+
+// --awb-eval 콘솔 출력: 기준과 방법별 조명(R, 1, B)·각도 오차
+static void printAwbEval(const std::string& id, const AwbEvalResult& result) {
+    auto illumText = [](const std::optional<Illum>& e) {
+        if (!e) return std::string("R -       G -       B -");
+        return "R " + fixedNum(e->r, 4) + "  G " + fixedNum(e->g, 4) + "  B " + fixedNum(e->b, 4);
+    };
+
+    std::cout << "AWB eval " << id << " (blocks " << result.n_blocks.value_or(0)
+              << ", saturated " << result.n_sat_blocks.value_or(0) << ")" << std::endl;
+    std::cout << "  ref  " << illumText(result.ref) << std::endl;
+    for (size_t i = 0; i < AWB_METHODS.size(); i++) {
+        std::cout << "  " << std::left << std::setw(4) << awbMethodName(AWB_METHODS[i]) << std::right
+                  << illumText(result.est[i]);
+        if (result.err[i]) std::cout << "  err " << fixedNum(*result.err[i], 3) << " deg";
+        std::cout << std::endl;
+    }
+}
+
+// --awb-eval의 끝: --csv가 있으면 한 줄을 기록하고 종료 코드를 돌려준다 (fail만 1, skip은 0)
+static int finishAwbEval(const Options& opt, const std::string& input, Clock::time_point start,
+                         const std::string& status, const std::string& error,
+                         const AwbEvalResult& result) {
+    const long long time_ms = elapsedMs(start);
+
+    if (!opt.csvPath.empty()) {
+        const CsvRow row = awbEvalCsvRow(baseCsvRow(photoId(input), status, error, time_ms), result);
+        if (!appendCsvRow(opt.csvPath, row)) return 1;
+    }
+
+    return status == "fail" ? 1 : 0;
+}
+
+// --awb-eval: 정규화 → 절반 크기 통계 → 4종 추정 → 기록 이득 대비 각도 오차를 csv 한 줄로 기록
+// WB 이후는 돌리지 않고 png·출력 폴더도 만들지 않는다
+static int runAwbEval(const Options& opt, const std::string& input) {
+    const auto start = Clock::now();
+
+    LibRaw ip;
+    RawMeta meta;
+    const unsigned short* rawImg = nullptr;
+    std::string error;
+    if (!loadRaw(ip, input, meta, rawImg, &error)) {
+        return finishAwbEval(opt, input, start, "fail", error, AwbEvalResult{});
+    }
+
+    const cv::Mat normImg = NormalizeBlackLevel(rawImg, meta);
+    const HalfStats hs = computeHalfStats(normImg, meta.colors);
+    if (hs.img.empty()) {
+        error = "half stats failed";
+        std::cerr << error << std::endl;
+        return finishAwbEval(opt, input, start, "fail", error, AwbEvalResult{});
+    }
+
+    AwbEvalResult result;
+    result.n_blocks = hs.n_blocks;
+    result.n_sat_blocks = hs.n_sat_blocks;
+    result.ref = referenceIllum(recordedGain(meta));
+
+    // 방법 하나가 실패해도 나머지는 계속한다 (그 방법의 열만 빈 값)
+    for (size_t i = 0; i < AWB_METHODS.size(); i++) {
+        const std::optional<Illum> est = estimateIllum(hs, AWB_METHODS[i]);
+        if (!est) continue;
+
+        result.est[i] = normalizeToG(*est);
+        if (result.est[i] && result.ref) result.err[i] = angularError(*result.est[i], *result.ref);
+    }
+
+    printAwbEval(photoId(input), result);
+
+    // 기준이 없으면 추정 조명만 남기고 skip (카메라가 WB 이득을 기록하지 않은 사진)
+    if (!result.ref) {
+        std::cout << "skip: no_cam_mul (recorded R/B gain is not a positive finite number)" << std::endl;
+        return finishAwbEval(opt, input, start, "skip", "no_cam_mul", result);
+    }
+
+    return finishAwbEval(opt, input, start, "ok", "", result);
+}
+
 int main (int argc, char* argv[]) {
 
     Options opt;
@@ -104,6 +218,9 @@ int main (int argc, char* argv[]) {
         std::cout << " (none)";
     }
     std::cout << std::endl;
+
+    // --awb-eval은 출력 폴더를 만들기 전에 분기한다 (png도 폴더도 만들지 않는다)
+    if (opt.awbEval) return runAwbEval(opt, input);
 
     // 옵션이 있으면 기본 결과를 덮어쓰지 않도록 exp_<옵션들> 폴더에 저장
     fs::path outPath = fs::path("output/img") / fs::path(input).stem().string();
