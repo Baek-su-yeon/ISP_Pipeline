@@ -38,6 +38,10 @@ SEMANTIC_LABELS = {
 ISO_LOW_MAX = 200
 ISO_MID_MAX = 800
 
+# ISO 단계: 아래 값과 정확히 같으면 그 값, 아니면 'other' (문자열로 저장)
+ISO_STEPS = [100, 200, 400, 800, 1600]
+ISO_STEP_OTHER = "other"
+
 # meta_raw.csv에서 색인에 가져가지 않는 열 (결과 csv와 열 이름이 겹침)
 META_DROP_COLUMNS = ["status", "error", "time_ms"]
 CBLACK_COLUMNS = ["cblack0", "cblack1", "cblack2", "cblack3"]
@@ -64,6 +68,11 @@ def compute_iso_bin(iso):
     )
 
 
+def compute_iso_step(iso):
+    """iso(Series) → '100'/'200'/'400'/'800'/'1600'/'other'. 값이 정확히 같을 때만 그 값."""
+    return iso.where(iso.isin(ISO_STEPS), -1).astype(int).astype(str).replace("-1", ISO_STEP_OTHER)
+
+
 def compute_index(meta, semantic):
     """색인 DataFrame과 보고에 필요한 집계(dict)를 돌려준다. 파일을 읽거나 쓰지 않는다."""
     stats = {"n_meta": len(meta), "n_semantic": len(semantic)}
@@ -82,6 +91,7 @@ def compute_index(meta, semantic):
     stats["n_merge_expected"] = len(meta_ok)
 
     index["iso_bin"] = compute_iso_bin(index["iso"])
+    index["iso_step"] = compute_iso_step(index["iso"])
     black_sum = index["black"] + index[CBLACK_COLUMNS].sum(axis=1)
     index["has_black"] = black_sum > 0
     cam_mul = index[CAM_MUL_COLUMNS]
