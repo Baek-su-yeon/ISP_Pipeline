@@ -1,0 +1,6 @@
+kind,label,n
+total,all,5000
+status,ok,4952
+status,fail,48
+error,LibRaw comparison failed,42
+error,Raw img isn't bayer,6
