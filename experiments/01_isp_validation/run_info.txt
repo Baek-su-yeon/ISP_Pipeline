@@ -1,0 +1,12 @@
+git commit: b1dcc67cff32e1d6517f43ab61232fac0f7f958c (수정된 파일 있음: no)
+manifest: experiments/01_isp_validation/manifest.csv
+options: --compare-libraw --no-save --csv
+jobs: 6
+start: 2026-10-10 04:05:46
+end: 2026-10-10 04:41:59
+elapsed_sec: 2173
+total: 5000
+ok: 4952
+fail: 48
+missing: 0
+skipped_in_this_run: 2449
