@@ -1,0 +1,12 @@
+git commit: d27ee5a87f85929689e302ddfa37a6c2f6f4e7a7 (수정된 파일 있음: yes)
+manifest: experiments/02_awb/manifest.csv
+options: --awb-eval --no-save --csv
+jobs: 11
+start: 2026-10-10 06:25:53
+end: 2026-10-10 06:40:06
+elapsed_sec: 853
+total: 5000
+ok: 4943
+fail: 57
+missing: 0
+skipped_in_this_run: 0
