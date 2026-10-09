@@ -33,12 +33,22 @@ static long long elapsedMs(Clock::time_point start) {
 
 // 일반 실행의 끝: --csv가 있으면 id,status,error,time_ms 한 줄을 기록하고 종료 코드를 돌려준다.
 // error가 비어 있으면 성공(ok), 아니면 fail. 원인은 실패한 쪽에서 이미 std::cerr에 출력했다
+// --compare-libraw면 비교 지표 열이 같은 줄에 붙는다 (fail이면 열은 같게 두고 값만 비운다)
 static int finishRun(const Options& opt, const std::string& input, Clock::time_point start,
-                     const std::string& error) {
+                     const std::string& error, const LibRawCompareStats& compare_stats) {
     const bool ok = error.empty();
 
     if (!opt.csvPath.empty()) {
-        const CsvRow row = baseCsvRow(photoId(input), ok ? "ok" : "fail", error, elapsedMs(start));
+        CsvRow row = baseCsvRow(photoId(input), ok ? "ok" : "fail", error, elapsedMs(start));
+
+        if (opt.compareLibraw) {
+            const size_t n_common = row.size();
+            row = compareCsvRow(row, compare_stats);
+            if (!ok) {
+                for (size_t i = n_common; i < row.size(); i++) row[i].second.clear();
+            }
+        }
+
         if (!appendCsvRow(opt.csvPath, row)) return 1;
     }
 
@@ -82,6 +92,7 @@ int main (int argc, char* argv[]) {
     if (opt.metaOnly) return runMetaOnly(opt, input);
 
     const auto start = Clock::now();
+    LibRawCompareStats compare_stats;   // --compare-libraw --csv일 때 채워진다
 
     // 켜진 옵션 목록
     std::cout << "Options:";
@@ -105,7 +116,9 @@ int main (int argc, char* argv[]) {
     RawMeta meta;
     const unsigned short* rawImg = nullptr;
     std::string load_error;
-    if (!loadRaw(ip, input, meta, rawImg, &load_error)) return finishRun(opt, input, start, load_error);
+    if (!loadRaw(ip, input, meta, rawImg, &load_error)) {
+        return finishRun(opt, input, start, load_error, compare_stats);
+    }
 
     // 실험 1-a: 메타데이터를 R↔B로 잘못 읽은 상황 (colors, bases, gains가 모두 바뀜)
     if (opt.swapRB) SwapRB(meta);
@@ -137,7 +150,7 @@ int main (int argc, char* argv[]) {
     if (opt.wbNoclip) PrintChannelMax("Demosaic max", reflectiondemosaic);
 
     if (!opt.noSave && !saveRGB8(outdir, "reflection_demosaic.png", reflectiondemosaic)) {
-        return finishRun(opt, input, start, "Failed to save reflection_demosaic.png");
+        return finishRun(opt, input, start, "Failed to save reflection_demosaic.png", compare_stats);
     }
 
     // 나중에 CCM 단계는 여기(Demosaic과 감마 사이)에 cv::Mat → cv::Mat 형태로 끼워 넣는다
@@ -152,10 +165,10 @@ int main (int argc, char* argv[]) {
     cv::Mat gamsRGBImg = ApplyGamma(gammaIn, GammaSRGB);
 
     if (!opt.noSave && !saveRGB8(outdir, "gamExpImg.png", gamExpImg)) {
-        return finishRun(opt, input, start, "Failed to save gamExpImg.png");
+        return finishRun(opt, input, start, "Failed to save gamExpImg.png", compare_stats);
     }
     if (!opt.noSave && !saveRGB8(outdir, "gamsRGBImg.png", gamsRGBImg)) {
-        return finishRun(opt, input, start, "Failed to save gamsRGBImg.png");
+        return finishRun(opt, input, start, "Failed to save gamsRGBImg.png", compare_stats);
     }
 
     if (kVerify) PrintGammaRegions(gammaIn, gamExpImg, gamsRGBImg);
@@ -177,10 +190,13 @@ int main (int argc, char* argv[]) {
 
     // 검증: LibRaw 기준 이미지와 비교 (내 파이프라인은 평소대로 돌린 뒤)
     if (opt.compareLibraw) {
-        if (!CompareWithLibRaw(input, outPath.string(), meta, reflectiondemosaic, gamsRGBImg)) {
-            return finishRun(opt, input, start, "LibRaw comparison failed");
+        // 지표는 csv에 기록할 때만 받는다 (csv가 없으면 크기가 달라도 기존처럼 비교만 건너뜀)
+        LibRawCompareStats* stats = opt.csvPath.empty() ? nullptr : &compare_stats;
+        if (!CompareWithLibRaw(input, outPath.string(), meta, reflectiondemosaic, gamsRGBImg,
+                               !opt.noSave, stats)) {
+            return finishRun(opt, input, start, "LibRaw comparison failed", compare_stats);
         }
     }
 
-    return finishRun(opt, input, start, "");
+    return finishRun(opt, input, start, "", compare_stats);
 }
