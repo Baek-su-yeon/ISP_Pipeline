@@ -55,4 +55,7 @@ bool readRawInfo(LibRaw& ip, const std::string& path, RawInfo& info, std::string
 
 // LibRaw로 파일을 열고 unpack한 뒤 메타데이터를 meta에 채운다.
 // rawImg는 LibRaw 객체(ip)가 살아 있는 동안만 유효하므로, 호출한 쪽에서 ip를 끝까지 유지해야 한다.
-bool loadRaw(LibRaw& ip, const std::string& path, RawMeta& meta, const unsigned short*& rawImg);
+// 실패하면 원인을 std::cerr에 출력하고 false. error가 nullptr이 아니면 같은 원인을 담아 돌려준다
+// (LibRaw 실패는 LibRaw::strerror 메시지) — csv의 error 열에 쓴다
+bool loadRaw(LibRaw& ip, const std::string& path, RawMeta& meta, const unsigned short*& rawImg,
+             std::string* error = nullptr);
