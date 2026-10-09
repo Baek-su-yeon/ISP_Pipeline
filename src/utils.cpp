@@ -33,8 +33,8 @@ bool save (const std::string& outdir, const std::string& name, const cv::Mat& im
     return true;
 }
 
-bool printDiff (const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
-                int border, double visScale) {
+bool computeDiff (const cv::Mat& img1, const cv::Mat& img2, DiffStats& stats, cv::Mat& diffVis,
+                  int border, double visScale) {
     if (img1.size() != img2.size() || img1.type() != img2.type()) {
         std::cerr << "printDiff: size/type mismatch: "
                   << img1.cols << "x" << img1.rows << " type " << img1.type() << " vs "
@@ -62,17 +62,23 @@ bool printDiff (const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
 
     // 통계는 바깥 border 화소를 뺀 영역만
     cv::Mat diff = fullDiff(cv::Rect(border, border, img1.cols - 2 * border, img1.rows - 2 * border));
-    const long long total = static_cast<long long>(diff.rows) * diff.cols;
+
+    stats = DiffStats();
+    stats.bits = (depth == CV_8U) ? 8 : 16;
+    stats.channels = img1.channels();
+    stats.border = border;
+    stats.cols = diff.cols;
+    stats.rows = diff.rows;
+    stats.total = static_cast<long long>(diff.rows) * diff.cols;
 
     std::vector<cv::Mat> planes;
     cv::split(diff, planes);
 
-    std::vector<double> maxDiff, meanDiff;
     for (const auto& p : planes) {
         double mn, mx;
         cv::minMaxLoc(p, &mn, &mx);
-        maxDiff.push_back(mx);
-        meanDiff.push_back(cv::mean(p)[0]);
+        stats.max_diff.push_back(mx);
+        stats.mean_diff.push_back(cv::mean(p)[0]);
     }
 
     // 화소별 채널 최대 차이: 어느 채널이든 차이가 있는지, 크기가 얼마인지
@@ -85,43 +91,64 @@ bool printDiff (const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
         return static_cast<long long>(cv::countNonZero(m));
     };
 
-    const long long nonZero = countGE(1);
-    long long bins[4];
-    const char* names[4];
+    stats.n_nonzero = countGE(1);
+    stats.n_over1 = countGE(2);
     if (depth == CV_8U) {
-        long long ge2 = countGE(2), ge3 = countGE(3);
-        bins[0] = total - nonZero; bins[1] = nonZero - ge2; bins[2] = ge2 - ge3; bins[3] = ge3;
-        names[0] = "0"; names[1] = "1"; names[2] = "2"; names[3] = "3+";
+        long long ge3 = countGE(3);
+        stats.bins[0] = stats.total - stats.n_nonzero;
+        stats.bins[1] = stats.n_nonzero - stats.n_over1;
+        stats.bins[2] = stats.n_over1 - ge3;
+        stats.bins[3] = ge3;
     } else {
         long long ge17 = countGE(17), ge257 = countGE(257);
-        bins[0] = total - nonZero; bins[1] = nonZero - ge17; bins[2] = ge17 - ge257; bins[3] = ge257;
+        stats.bins[0] = stats.total - stats.n_nonzero;
+        stats.bins[1] = stats.n_nonzero - ge17;
+        stats.bins[2] = ge17 - ge257;
+        stats.bins[3] = ge257;
+    }
+
+    return true;
+}
+
+void printDiffStats (const DiffStats& stats) {
+    const char* names[4];
+    if (stats.bits == 8) {
+        names[0] = "0"; names[1] = "1"; names[2] = "2"; names[3] = "3+";
+    } else {
         names[0] = "0"; names[1] = "1~16"; names[2] = "17~256"; names[3] = "257+";
     }
 
     std::ios::fmtflags oldFlags = std::cout.flags();
     std::streamsize oldPrec = std::cout.precision(8);
 
-    std::cout << "  diff (" << (depth == CV_8U ? "8" : "16") << "-bit, " << img1.channels() << "ch, border " << border
-              << ", compared " << diff.cols << "x" << diff.rows << ")" << std::endl;
+    std::cout << "  diff (" << stats.bits << "-bit, " << stats.channels << "ch, border " << stats.border
+              << ", compared " << stats.cols << "x" << stats.rows << ")" << std::endl;
 
     std::cout << "    max diff per channel      :";
-    for (double v : maxDiff) std::cout << " " << v;
+    for (double v : stats.max_diff) std::cout << " " << v;
     std::cout << std::endl;
 
     std::cout << "    mean abs diff per channel :";
-    for (double v : meanDiff) std::cout << " " << v;
+    for (double v : stats.mean_diff) std::cout << " " << v;
     std::cout << std::endl;
 
-    std::cout << "    pixels with any-channel diff: " << nonZero << " / " << total
-              << " (" << 100.0 * nonZero / total << "%)" << std::endl;
+    std::cout << "    pixels with any-channel diff: " << stats.n_nonzero << " / " << stats.total
+              << " (" << 100.0 * stats.n_nonzero / stats.total << "%)" << std::endl;
 
     std::cout << "    pixels by max channel diff  :";
-    for (int i = 0; i < 4; i++) std::cout << " [" << names[i] << "] " << bins[i];
+    for (int i = 0; i < 4; i++) std::cout << " [" << names[i] << "] " << stats.bins[i];
     std::cout << std::endl;
 
     std::cout.flags(oldFlags);
     std::cout.precision(oldPrec);
+}
 
+bool printDiff (const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
+                int border, double visScale) {
+    DiffStats stats;
+    if (!computeDiff(img1, img2, stats, diffVis, border, visScale)) return false;
+
+    printDiffStats(stats);
     return true;
 }
 
