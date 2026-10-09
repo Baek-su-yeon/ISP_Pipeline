@@ -6,6 +6,7 @@
 #include <opencv2/core.hpp>
 
 struct RawInfo;
+struct LibRawCompareStats;
 
 // LibRaw 반환값 확인. 실패하면 에러 메시지를 출력하고 false
 bool check(int result);
@@ -69,6 +70,9 @@ bool appendCsvRow(const std::string& csv_path, const CsvRow& row);
 // --meta-only 결과 한 줄: common(baseCsvRow) 뒤에 path와 메타데이터 열을 붙인다.
 // info.ok가 false면 path만 채우고 나머지 값은 비운다
 CsvRow metaCsvRow(const CsvRow& common, const std::string& path, const RawInfo& info);
+
+// --compare-libraw 결과 열: common(baseCsvRow) 뒤에 max8_r,g,b, mae8_r,g,b, max16_r,g,b, n_over1_8을 붙인다
+CsvRow compareCsvRow(const CsvRow& common, const LibRawCompareStats& stats);
 
 // 저장용: 내부 RGB(0~1, CV_32FC3) → BGR 순서로 바꾼 뒤 8비트로 저장
 // OpenCV는 BGR 순서로 저장하므로 저장 직전에만 바꾼다
