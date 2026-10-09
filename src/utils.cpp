@@ -274,6 +274,31 @@ CsvRow compareCsvRow(const CsvRow& common, const LibRawCompareStats& stats) {
     return row;
 }
 
+CsvRow awbEvalCsvRow(const CsvRow& common, const AwbEvalResult& result) {
+    CsvRow row = common;
+
+    auto add = [&](const std::string& name, bool has, double v) {
+        row.emplace_back(name, has ? csvNum(v) : "");
+    };
+    auto add_illum = [&](const std::string& prefix, const std::optional<Illum>& e) {
+        add(prefix + "_r", e.has_value(), e ? e->r : 0.0);
+        add(prefix + "_g", e.has_value(), e ? e->g : 0.0);
+        add(prefix + "_b", e.has_value(), e ? e->b : 0.0);
+    };
+
+    add_illum("ref", result.ref);
+    for (size_t i = 0; i < AWB_METHODS.size(); i++) {
+        const std::string name = awbMethodName(AWB_METHODS[i]);
+        add_illum(name, result.est[i]);
+        add(name + "_err", result.err[i].has_value(), result.err[i] ? *result.err[i] : 0.0);
+    }
+
+    row.emplace_back("n_blocks", result.n_blocks ? std::to_string(*result.n_blocks) : "");
+    row.emplace_back("n_sat_blocks", result.n_sat_blocks ? std::to_string(*result.n_sat_blocks) : "");
+
+    return row;
+}
+
 bool saveRGB8 (const std::string& outdir, const std::string& name, const cv::Mat& rgb32f) {
     cv::Mat bgr, img8;
     cv::cvtColor(rgb32f, bgr, cv::COLOR_RGB2BGR);
