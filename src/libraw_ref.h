@@ -45,8 +45,20 @@ struct LibRawRef {
 // 입력 DNG를 새 LibRaw 객체로 다시 열어 dcraw_process → dcraw_make_mem_image로 RGB 이미지를 만든다.
 bool MakeLibRawRef(const std::string& path, const LibRawRefParams& params, LibRawRef& out);
 
-// 내 결과와 LibRaw 기준 세 가지(A1, A2, B)를 비교해 수치를 출력하고 outdir/libraw/ 에 저장한다.
+// 조건 맞춤 비교(A1, A2)의 지표. 가장자리 2화소를 뺀 영역 기준, 채널은 [0] R, [1] G, [2] B
+struct LibRawCompareStats {
+    double max8[3] = {};       // A2 (sRGB 8비트): 채널별 최대 차이
+    double mae8[3] = {};       // A2: 채널별 평균 절대 차이
+    double max16[3] = {};      // A1 (선형 16비트): 채널별 최대 차이
+    long long n_over1_8 = 0;   // A2: 차이가 1을 넘는(2 이상인) 화소 수
+};
+
+// 내 결과와 LibRaw 기준 세 가지(A1, A2, B)를 비교해 수치를 출력한다.
 // myLinear: 내 Demosaic 결과 (CV_32FC3, RGB, 0~1) → 16비트(× 65535, 반올림)로 바꿔 A1과 비교
 // myGamsRGB: 내 sRGB 감마 결과 (CV_32FC3, RGB, 0~1) → 8비트(저장할 때와 같은 convertTo)로 바꿔 A2, B와 비교
+// save_images: true면 outdir/libraw/ 에 기준 이미지와 차이 그림을 저장한다. false면 폴더도 만들지 않는다
+// stats: nullptr이 아니면 A1, A2 지표를 담아 돌려준다. 이때 크기가 달라 A1 또는 A2를 비교하지 못했으면
+//        에러 메시지를 출력하고 false (stats가 nullptr이면 기존처럼 비교만 건너뛴다)
 bool CompareWithLibRaw(const std::string& input, const std::string& outdir, const RawMeta& meta,
-                       const cv::Mat& myLinear, const cv::Mat& myGamsRGB);
+                       const cv::Mat& myLinear, const cv::Mat& myGamsRGB,
+                       bool save_images = true, LibRawCompareStats* stats = nullptr);

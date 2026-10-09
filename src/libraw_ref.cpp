@@ -125,9 +125,13 @@ static void PrintMyValues(const RawMeta& meta) {
 }
 
 bool CompareWithLibRaw(const std::string& input, const std::string& outdir, const RawMeta& meta,
-                       const cv::Mat& myLinear, const cv::Mat& myGamsRGB) {
+                       const cv::Mat& myLinear, const cv::Mat& myGamsRGB,
+                       bool save_images, LibRawCompareStats* stats) {
     const std::string libDir = (fs::path(outdir) / "libraw").string();
-    fs::create_directories(libDir);
+    if (save_images) fs::create_directories(libDir);
+
+    // stats에 담긴 비교 (A1, A2)
+    bool a1_done = false, a2_done = false;
 
     // 내 결과를 LibRaw와 같은 형식으로
     cv::Mat my16, my8;
@@ -173,7 +177,7 @@ bool CompareWithLibRaw(const std::string& input, const std::string& outdir, cons
         std::cout << "  LibRaw size: " << ref.rgb.cols << " x " << ref.rgb.rows << " (W x H), "
                   << (ref.rgb.depth() == CV_16U ? 16 : 8) << "-bit" << std::endl;
 
-        if (!SaveRGBAny(libDir, it.imgName, ref.rgb)) return false;
+        if (save_images && !SaveRGBAny(libDir, it.imgName, ref.rgb)) return false;
 
         if (ref.rgb.rows != meta.realH || ref.rgb.cols != meta.realW) {
             std::cout << "  size mismatch: LibRaw " << ref.rgb.cols << " x " << ref.rgb.rows
@@ -185,14 +189,35 @@ bool CompareWithLibRaw(const std::string& input, const std::string& outdir, cons
 
         cv::Mat vis;
         for (int border : {2, 0}) {
-            if (!printDiff(ref.rgb, *it.mine, vis, border, it.visScale)) return false;
+            DiffStats diff;
+            if (!computeDiff(ref.rgb, *it.mine, diff, vis, border, it.visScale)) return false;
+            printDiffStats(diff);
+
+            // csv용 지표는 가장자리 2화소를 뺀 비교에서
+            if (border != 2 || stats == nullptr) continue;
+            if (std::string(it.tag) == "A1") {
+                for (int ch = 0; ch < 3; ch++) stats->max16[ch] = diff.max_diff[ch];
+                a1_done = true;
+            } else if (std::string(it.tag) == "A2") {
+                for (int ch = 0; ch < 3; ch++) {
+                    stats->max8[ch] = diff.max_diff[ch];
+                    stats->mae8[ch] = diff.mean_diff[ch];
+                }
+                stats->n_over1_8 = diff.n_over1;
+                a2_done = true;
+            }
         }
 
-        if (!save(libDir, it.diffName, vis)) return false;
+        if (save_images && !save(libDir, it.diffName, vis)) return false;
     }
 
     std::cout.flags(oldFlags);
     std::cout.precision(oldPrec);
+
+    if (stats != nullptr && !(a1_done && a2_done)) {
+        std::cerr << "CompareWithLibRaw: A1/A2 not compared (size mismatch), no stats" << std::endl;
+        return false;
+    }
 
     return true;
 }
