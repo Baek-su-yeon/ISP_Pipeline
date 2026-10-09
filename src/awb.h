@@ -41,3 +41,18 @@ std::optional<Illum> normalizeToG(const Illum& illum);
 
 // 두 조명 사이 각도 (도). 길이가 0인 벡터가 있으면 NaN
 double angularError(const Illum& est, const Illum& ref);
+
+enum class AwbMethod { GW, WP, SOG, GE };
+
+// 모두 유효 블록만 사용. 유효 블록이 없거나 입력이 잘못되면 nullopt
+// Gray World: e_c = mean(I_c)
+std::optional<Illum> estimateGrayWorld(const HalfStats& hs);
+// White Patch: e_c = I_c의 percentile 백분위수 (채널마다 따로)
+std::optional<Illum> estimateWhitePatch(const HalfStats& hs, double percentile);
+// Shades of Gray: e_c = (mean(I_c^p))^(1/p)
+std::optional<Illum> estimateShadesOfGray(const HalfStats& hs, double p);
+// Gray Edge: e_c = (mean(|∇I_c|^p))^(1/p), 3x3 평균 뒤 [-1, 0, 1] 차분
+std::optional<Illum> estimateGrayEdge(const HalfStats& hs, double p);
+
+// 방법별 튜닝 상수로 위 함수 호출
+std::optional<Illum> estimateIllum(const HalfStats& hs, AwbMethod method);
