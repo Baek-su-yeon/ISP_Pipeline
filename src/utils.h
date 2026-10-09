@@ -13,15 +13,36 @@ bool check(int result);
 // outdir/name 으로 이미지 저장. 실패하면 에러 메시지를 출력하고 false
 bool save(const std::string& outdir, const std::string& name, const cv::Mat& img);
 
-// 두 이미지(CV_8U 또는 CV_16U, 1채널 또는 3채널)의 차이 통계를 출력한다.
+// 두 이미지 차이 통계 (computeDiff가 계산하고 printDiffStats가 출력한다)
+struct DiffStats {
+    int bits = 0;            // 8 또는 16
+    int channels = 0;
+    int border = 0;          // 통계에서 뺀 바깥 화소 수
+    int cols = 0, rows = 0;  // 통계를 낸 영역 크기
+
+    std::vector<double> max_diff;    // 채널별 최대 차이
+    std::vector<double> mean_diff;   // 채널별 평균 절대 차이
+
+    long long total = 0;             // 통계를 낸 화소 수 (cols * rows)
+    long long n_nonzero = 0;         // 어느 채널이든 차이가 1 이상인 화소 수
+    long long n_over1 = 0;           // 어느 채널이든 차이가 2 이상인 화소 수 (차이가 1을 넘는 화소)
+    long long bins[4] = {};          // 화소별 채널 최대 차이의 크기별 화소 수
+                                     // (8비트: 0, 1, 2, 3 이상 / 16비트: 0, 1~16, 17~256, 257 이상)
+};
+
+// 두 이미지(CV_8U 또는 CV_16U, 1채널 또는 3채널)의 차이 통계를 stats에 계산한다 (출력 없음).
 // 크기·타입이 다르면 에러 메시지를 출력하고 false.
-// 출력: 채널별 최대 차이, 채널별 평균 절대 차이,
-//       "어느 채널이든 차이가 있는 화소" 수와 비율,
-//       화소별 채널 최대 차이의 크기별 화소 수
-//       (8비트: 0, 1, 2, 3 이상 / 16비트: 0, 1~16, 17~256, 257 이상)
 // border: 바깥 border 화소를 빼고 비교 (통계에만 적용)
 // diffVis: 차이를 눈으로 보기 위한 8비트 그림 (|차이| × visScale, 255에서 포화).
 //          border와 상관없이 이미지 전체
+bool computeDiff(const cv::Mat& img1, const cv::Mat& img2, DiffStats& stats, cv::Mat& diffVis,
+                 int border = 0, double visScale = 255.0);
+
+// 차이 통계를 콘솔에 출력: 채널별 최대 차이, 채널별 평균 절대 차이,
+// "어느 채널이든 차이가 있는 화소" 수와 비율, 화소별 채널 최대 차이의 크기별 화소 수
+void printDiffStats(const DiffStats& stats);
+
+// computeDiff + printDiffStats (통계가 필요 없을 때)
 bool printDiff(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
                int border = 0, double visScale = 255.0);
 
