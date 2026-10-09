@@ -12,8 +12,8 @@ DEFAULT_INDEX = "data/index.csv"
 
 
 def load_index(path):
-    """색인 읽기. 'None' 글자를 NaN으로 바꾸지 않는다."""
-    return pd.read_csv(path, keep_default_na=False)
+    """색인 읽기. 'None' 글자를 NaN으로 바꾸지 않고, iso_step은 문자열로 읽는다."""
+    return pd.read_csv(path, keep_default_na=False, dtype={"iso_step": str})
 
 
 def compute_missing_paths(manifest):
