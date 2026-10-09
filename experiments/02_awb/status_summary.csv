@@ -1,0 +1,7 @@
+kind,label,n
+total,all,5000
+status,ok,4943
+status,skip,51
+status,fail,6
+error,fail: Raw img isn't bayer,6
+error,skip: no_cam_mul,51
