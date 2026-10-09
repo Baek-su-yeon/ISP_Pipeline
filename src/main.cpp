@@ -25,17 +25,36 @@ constexpr bool kVerify = true;
 // 밴딩 실험에서 8비트 값 개수를 세는 입력 구간 (0 ~ kBandMax)
 constexpr double kBandMax = 0.05;
 
+using Clock = std::chrono::steady_clock;
+
+static long long elapsedMs(Clock::time_point start) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+}
+
+// 일반 실행의 끝: --csv가 있으면 id,status,error,time_ms 한 줄을 기록하고 종료 코드를 돌려준다.
+// error가 비어 있으면 성공(ok), 아니면 fail. 원인은 실패한 쪽에서 이미 std::cerr에 출력했다
+static int finishRun(const Options& opt, const std::string& input, Clock::time_point start,
+                     const std::string& error) {
+    const bool ok = error.empty();
+
+    if (!opt.csvPath.empty()) {
+        const CsvRow row = baseCsvRow(photoId(input), ok ? "ok" : "fail", error, elapsedMs(start));
+        if (!appendCsvRow(opt.csvPath, row)) return 1;
+    }
+
+    return ok ? 0 : 1;
+}
+
 // --meta-only: open_file만 하고 메타데이터를 csv 한 줄로 기록. 열기에 실패해도 fail 줄을 남긴다
 static int runMetaOnly(const Options& opt, const std::string& input) {
-    const auto start = std::chrono::steady_clock::now();
+    const auto start = Clock::now();
 
     LibRaw ip;
     RawInfo info;
     std::string error;
     const bool ok = readRawInfo(ip, input, info, error);
 
-    const long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start).count();
+    const long long time_ms = elapsedMs(start);
 
     if (!ok) std::cerr << error << std::endl;
 
@@ -62,6 +81,8 @@ int main (int argc, char* argv[]) {
 
     if (opt.metaOnly) return runMetaOnly(opt, input);
 
+    const auto start = Clock::now();
+
     // 켜진 옵션 목록
     std::cout << "Options:";
     const std::vector<std::string> enabled = EnabledOptions(opt);
@@ -77,13 +98,14 @@ int main (int argc, char* argv[]) {
     fs::path outPath = fs::path("output/img") / fs::path(input).stem().string();
     if (opt.anyExperiment()) outPath /= ExpDirName(opt);
     std::string outdir = outPath.string();
-    fs::create_directories(outdir);
+    if (!opt.noSave) fs::create_directories(outdir);
 
     // rawImg는 ip가 살아 있는 동안만 유효하므로 main 끝까지 유지
     LibRaw ip;
     RawMeta meta;
     const unsigned short* rawImg = nullptr;
-    if (!loadRaw(ip, input, meta, rawImg)) return 1;
+    std::string load_error;
+    if (!loadRaw(ip, input, meta, rawImg, &load_error)) return finishRun(opt, input, start, load_error);
 
     // 실험 1-a: 메타데이터를 R↔B로 잘못 읽은 상황 (colors, bases, gains가 모두 바뀜)
     if (opt.swapRB) SwapRB(meta);
@@ -114,7 +136,9 @@ int main (int argc, char* argv[]) {
     PrintChannelMean("Demosaic mean", reflectiondemosaic);
     if (opt.wbNoclip) PrintChannelMax("Demosaic max", reflectiondemosaic);
 
-    if (!saveRGB8(outdir, "reflection_demosaic.png", reflectiondemosaic)) return 1;
+    if (!opt.noSave && !saveRGB8(outdir, "reflection_demosaic.png", reflectiondemosaic)) {
+        return finishRun(opt, input, start, "Failed to save reflection_demosaic.png");
+    }
 
     // 나중에 CCM 단계는 여기(Demosaic과 감마 사이)에 cv::Mat → cv::Mat 형태로 끼워 넣는다
 
@@ -127,8 +151,12 @@ int main (int argc, char* argv[]) {
     cv::Mat gamExpImg = ApplyGamma(gammaIn, GammaExp);
     cv::Mat gamsRGBImg = ApplyGamma(gammaIn, GammaSRGB);
 
-    if (!saveRGB8(outdir, "gamExpImg.png", gamExpImg)) return 1;
-    if (!saveRGB8(outdir, "gamsRGBImg.png", gamsRGBImg)) return 1;
+    if (!opt.noSave && !saveRGB8(outdir, "gamExpImg.png", gamExpImg)) {
+        return finishRun(opt, input, start, "Failed to save gamExpImg.png");
+    }
+    if (!opt.noSave && !saveRGB8(outdir, "gamsRGBImg.png", gamsRGBImg)) {
+        return finishRun(opt, input, start, "Failed to save gamsRGBImg.png");
+    }
 
     if (kVerify) PrintGammaRegions(gammaIn, gamExpImg, gamsRGBImg);
 
@@ -149,8 +177,10 @@ int main (int argc, char* argv[]) {
 
     // 검증: LibRaw 기준 이미지와 비교 (내 파이프라인은 평소대로 돌린 뒤)
     if (opt.compareLibraw) {
-        if (!CompareWithLibRaw(input, outPath.string(), meta, reflectiondemosaic, gamsRGBImg)) return 1;
+        if (!CompareWithLibRaw(input, outPath.string(), meta, reflectiondemosaic, gamsRGBImg)) {
+            return finishRun(opt, input, start, "LibRaw comparison failed");
+        }
     }
 
-    return 0;
+    return finishRun(opt, input, start, "");
 }
