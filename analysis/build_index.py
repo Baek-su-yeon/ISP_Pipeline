@@ -33,11 +33,6 @@ SEMANTIC_LABELS = {
     "subject": ["man_made", "people", "nature", "animals", "abstract", "None"],
 }
 
-# ISO 구간 경계. 분포를 본 뒤 정한다 (plot_distribution.py 결과 확인 후 확정)
-# 구간: iso <= ISO_LOW_MAX → low, iso <= ISO_MID_MAX → mid, 그 위 → high
-ISO_LOW_MAX = 200
-ISO_MID_MAX = 800
-
 # ISO 단계: 아래 값과 정확히 같으면 그 값, 아니면 'other' (문자열로 저장)
 ISO_STEPS = [100, 200, 400, 800, 1600]
 ISO_STEP_OTHER = "other"
@@ -58,14 +53,6 @@ def load_semantic(path):
     df = pd.read_csv(path, header=None, names=["name"] + SEMANTIC_COLUMNS, keep_default_na=False)
     df.insert(0, "id", df["name"].str.split("-", n=1).str[0])
     return df.drop(columns="name")
-
-
-def compute_iso_bin(iso):
-    """iso(Series) → 'low'/'mid'/'high'. 경계는 파일 위쪽 상수."""
-    return pd.Series(
-        np.select([iso <= ISO_LOW_MAX, iso <= ISO_MID_MAX], ["low", "mid"], default="high"),
-        index=iso.index,
-    )
 
 
 def compute_iso_step(iso):
@@ -90,7 +77,6 @@ def compute_index(meta, semantic):
     stats["n_index"] = len(index)
     stats["n_merge_expected"] = len(meta_ok)
 
-    index["iso_bin"] = compute_iso_bin(index["iso"])
     index["iso_step"] = compute_iso_step(index["iso"])
     black_sum = index["black"] + index[CBLACK_COLUMNS].sum(axis=1)
     index["has_black"] = black_sum > 0
@@ -132,8 +118,9 @@ def compute_report(index, stats, semantic):
               f"  id: {stats['cam_mul_invalid'][:20]}{' ...' if len(stats['cam_mul_invalid']) > 20 else ''}", ""]
 
     lines += ["[파생 열]",
-              f"iso_bin 경계: low <= {ISO_LOW_MAX} < mid <= {ISO_MID_MAX} < high (분포 확인 전 임시값)"]
-    lines += [f"  {k}: {v}장" for k, v in index["iso_bin"].value_counts().reindex(["low", "mid", "high"], fill_value=0).items()]
+              f"iso_step: iso가 {'/'.join(str(x) for x in ISO_STEPS)}과 정확히 같으면 그 값, 아니면 {ISO_STEP_OTHER}"]
+    step_order = [str(x) for x in ISO_STEPS] + [ISO_STEP_OTHER]
+    lines += [f"  {k}: {v}장" for k, v in index["iso_step"].value_counts().reindex(step_order, fill_value=0).items()]
     lines += [f"has_black (black + cblack0..3 > 0): True {int(index['has_black'].sum())}장, False {int((~index['has_black']).sum())}장",
               f"cam_mul_valid: True {int(index['cam_mul_valid'].sum())}장, False {int((~index['cam_mul_valid']).sum())}장"]
     return "\n".join(lines) + "\n"
