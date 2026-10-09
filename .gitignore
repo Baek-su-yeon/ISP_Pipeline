@@ -91,3 +91,10 @@ docs/sessions/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
+
+### 실험 ###
+# venv 항목 [Ss]cripts가 scripts/ 폴더를 무시하므로 다시 포함 (scripts/run_batch.sh)
+!/scripts/
+
+# 사진별 임시 결과 (배치 실행 중간 파일)
+experiments/*/rows/
