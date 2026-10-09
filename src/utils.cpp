@@ -10,6 +10,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include "raw_loader.h"
+#include "libraw_ref.h"
 
 namespace fs = std::filesystem;
 
@@ -257,6 +258,18 @@ CsvRow metaCsvRow(const CsvRow& common, const std::string& path, const RawInfo& 
     add("left_margin", std::to_string(info.left_margin));
     add("colors", std::to_string(info.colors));
     add("filters", std::to_string(info.filters));
+
+    return row;
+}
+
+CsvRow compareCsvRow(const CsvRow& common, const LibRawCompareStats& stats) {
+    CsvRow row = common;
+
+    const char* ch[3] = {"r", "g", "b"};
+    for (int i = 0; i < 3; i++) row.emplace_back(std::string("max8_") + ch[i], csvNum(stats.max8[i]));
+    for (int i = 0; i < 3; i++) row.emplace_back(std::string("mae8_") + ch[i], csvNum(stats.mae8[i]));
+    for (int i = 0; i < 3; i++) row.emplace_back(std::string("max16_") + ch[i], csvNum(stats.max16[i]));
+    row.emplace_back("n_over1_8", std::to_string(stats.n_over1_8));
 
     return row;
 }
