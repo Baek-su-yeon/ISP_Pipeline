@@ -1,11 +1,15 @@
 #include "utils.h"
 
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <filesystem>
+#include <sstream>
 #include <vector>
 #include <libraw/libraw.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include "raw_loader.h"
 
 namespace fs = std::filesystem;
 
@@ -119,6 +123,115 @@ bool printDiff (const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
     std::cout.precision(oldPrec);
 
     return true;
+}
+
+std::string photoId(const std::string& path) {
+    const fs::path p(path);
+    const std::string name = p.filename().string();
+    const size_t dash = name.find('-');
+    return dash == std::string::npos ? p.stem().string() : name.substr(0, dash);
+}
+
+std::string csvNum(double v) {
+    std::ostringstream os;
+    os << std::setprecision(8) << v;
+    return os.str();
+}
+
+CsvRow baseCsvRow(const std::string& id, const std::string& status,
+                  const std::string& error, long long time_ms) {
+    return {{"id", id}, {"status", status}, {"error", error}, {"time_ms", std::to_string(time_ms)}};
+}
+
+// 쉼표·따옴표·줄바꿈이 있으면 큰따옴표로 감싼다 (안의 큰따옴표는 두 번)
+static std::string csvField(const std::string& s) {
+    if (s.find_first_of(",\"\r\n") == std::string::npos) return s;
+
+    std::string out = "\"";
+    for (char ch : s) {
+        if (ch == '"') out += '"';
+        out += ch;
+    }
+    return out + "\"";
+}
+
+static std::string csvLine(const CsvRow& row, bool names) {
+    std::string line;
+    for (const auto& col : row) {
+        if (!line.empty()) line += ',';
+        line += csvField(names ? col.first : col.second);
+    }
+    return line;
+}
+
+bool appendCsvRow(const std::string& csv_path, const CsvRow& row) {
+    const std::string header = csvLine(row, true);
+
+    bool need_header = true;
+    if (fs::exists(csv_path) && fs::file_size(csv_path) > 0) {
+        std::ifstream in(csv_path);
+        std::string first;
+        std::getline(in, first);
+        if (!first.empty() && first.back() == '\r') first.pop_back();
+        if (first != header) {
+            std::cerr << "csv header mismatch: " << csv_path << std::endl;
+            return false;
+        }
+        need_header = false;
+    }
+
+    const fs::path parent = fs::path(csv_path).parent_path();
+    if (!parent.empty()) fs::create_directories(parent);
+
+    std::ofstream out(csv_path, std::ios::app);
+    if (!out) {
+        std::cerr << "Failed to open csv: " << csv_path << std::endl;
+        return false;
+    }
+
+    // 헤더와 한 줄을 한 번에 쓴다 (중간에 끊겨도 반쪽 줄이 남지 않게)
+    out << (need_header ? header + "\n" : "") << csvLine(row, false) << "\n";
+    out.flush();
+    if (!out) {
+        std::cerr << "Failed to write csv: " << csv_path << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+CsvRow metaCsvRow(const CsvRow& common, const std::string& path, const RawInfo& info) {
+    CsvRow row = common;
+    row.emplace_back("path", path);
+
+    // 읽기에 실패한 줄은 값을 비운다 (열은 항상 같다)
+    auto add = [&](const char* name, const std::string& value) {
+        row.emplace_back(name, info.ok ? value : "");
+    };
+
+    add("make", info.make);
+    add("model", info.model);
+    add("iso", csvNum(info.iso));
+    add("pattern", info.pattern);
+    add("black", std::to_string(info.black));
+    for (int i = 0; i < 4; i++) add(("cblack" + std::to_string(i)).c_str(), std::to_string(info.cblack[i]));
+    add("cblack_h", std::to_string(info.cblack[4]));
+    add("cblack_w", std::to_string(info.cblack[5]));
+    add("white", std::to_string(info.white));
+    add("cam_mul_r", csvNum(info.cam_mul[0]));
+    add("cam_mul_g", csvNum(info.cam_mul[1]));
+    add("cam_mul_b", csvNum(info.cam_mul[2]));
+    add("cam_mul_g2", csvNum(info.cam_mul[3]));
+    add("raw_w", std::to_string(info.raw_w));
+    add("raw_h", std::to_string(info.raw_h));
+    add("w", std::to_string(info.w));
+    add("h", std::to_string(info.h));
+    add("top_margin", std::to_string(info.top_margin));
+    add("left_margin", std::to_string(info.left_margin));
+    add("colors", std::to_string(info.colors));
+    add("filters", std::to_string(info.filters));
+
+    return row;
 }
 
 bool saveRGB8 (const std::string& outdir, const std::string& name, const cv::Mat& rgb32f) {

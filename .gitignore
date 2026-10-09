@@ -74,3 +74,20 @@ output/
 
 # vscode 실행 폴더
 .vscode/
+
+# claude 관련 생성
+CLAUDE.md
+.claude/
+docs/sessions/
+
+### venv ###
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+pip-selfcheck.json

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -24,6 +25,26 @@ constexpr bool kVerify = true;
 // 밴딩 실험에서 8비트 값 개수를 세는 입력 구간 (0 ~ kBandMax)
 constexpr double kBandMax = 0.05;
 
+// --meta-only: open_file만 하고 메타데이터를 csv 한 줄로 기록. 열기에 실패해도 fail 줄을 남긴다
+static int runMetaOnly(const Options& opt, const std::string& input) {
+    const auto start = std::chrono::steady_clock::now();
+
+    LibRaw ip;
+    RawInfo info;
+    std::string error;
+    const bool ok = readRawInfo(ip, input, info, error);
+
+    const long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start).count();
+
+    if (!ok) std::cerr << error << std::endl;
+
+    const CsvRow row = metaCsvRow(baseCsvRow(photoId(input), ok ? "ok" : "fail", error, time_ms), input, info);
+    if (!appendCsvRow(opt.csvPath, row)) return 1;
+
+    return ok ? 0 : 1;
+}
+
 int main (int argc, char* argv[]) {
 
     Options opt;
@@ -38,6 +59,8 @@ int main (int argc, char* argv[]) {
         case ParseResult::Ok:
             break;
     }
+
+    if (opt.metaOnly) return runMetaOnly(opt, input);
 
     // 켜진 옵션 목록
     std::cout << "Options:";

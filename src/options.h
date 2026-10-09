@@ -15,6 +15,12 @@ struct Options {
     // 검증 옵션: 실험이 아니라 평소 결과를 LibRaw 기준 이미지와 비교한다 (실험 옵션과 같이 쓸 수 없음)
     bool compareLibraw = false;   // --compare-libraw
 
+    // 메타데이터만 기록하는 실행: open_file만 하고 unpack·ISP는 하지 않는다 (--csv 필요)
+    bool metaOnly = false;        // --meta-only
+
+    // 결과를 한 줄로 추가 기록할 csv 경로 (비어 있으면 기록 안 함)
+    std::string csvPath;          // --csv <경로>
+
     // 실험 옵션이 하나라도 켜져 있는지 (켜져 있으면 exp_ 폴더에 저장)
     bool anyExperiment() const {
         return swapRB || swapRBDemosaic || noBlack || wbNoclip || quantizeLinear;

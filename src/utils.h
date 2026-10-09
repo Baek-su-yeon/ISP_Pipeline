@@ -1,7 +1,11 @@
 #pragma once
 
 #include <string>
+#include <utility>
+#include <vector>
 #include <opencv2/core.hpp>
+
+struct RawInfo;
 
 // LibRaw 반환값 확인. 실패하면 에러 메시지를 출력하고 false
 bool check(int result);
@@ -20,6 +24,30 @@ bool save(const std::string& outdir, const std::string& name, const cv::Mat& img
 //          border와 상관없이 이미지 전체
 bool printDiff(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& diffVis,
                int border = 0, double visScale = 255.0);
+
+// ---- csv 기록 (전수 실행 결과: 사진당 한 줄) ----
+
+// csv 한 줄: (열 이름, 값) 쌍을 열 순서대로 담는다. 값은 이미 문자열
+using CsvRow = std::vector<std::pair<std::string, std::string>>;
+
+// 사진 id: 파일 이름의 첫 '-' 앞 (a0001-jmac_DSC1459.dng → a0001). '-'가 없으면 확장자를 뺀 이름
+std::string photoId(const std::string& path);
+
+// 숫자를 csv 값 문자열로 (유효숫자 8자리, 불필요한 0은 없음)
+std::string csvNum(double v);
+
+// 모든 결과 csv의 앞 4열: id,status,error,time_ms. status는 "ok" 또는 "fail"
+// 다른 열은 이 줄 뒤에 emplace_back으로 이어 붙인다
+CsvRow baseCsvRow(const std::string& id, const std::string& status,
+                  const std::string& error, long long time_ms);
+
+// csv_path 끝에 row 한 줄을 추가한다. 파일이 없거나 비어 있으면 헤더(열 이름)부터 쓰고,
+// 있으면 첫 줄이 row의 열 이름과 같은지 확인한다 (다르면 에러 메시지를 출력하고 false)
+bool appendCsvRow(const std::string& csv_path, const CsvRow& row);
+
+// --meta-only 결과 한 줄: common(baseCsvRow) 뒤에 path와 메타데이터 열을 붙인다.
+// info.ok가 false면 path만 채우고 나머지 값은 비운다
+CsvRow metaCsvRow(const CsvRow& common, const std::string& path, const RawInfo& info);
 
 // 저장용: 내부 RGB(0~1, CV_32FC3) → BGR 순서로 바꾼 뒤 8비트로 저장
 // OpenCV는 BGR 순서로 저장하므로 저장 직전에만 바꾼다
