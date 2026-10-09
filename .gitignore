@@ -98,3 +98,6 @@ pip-selfcheck.json
 
 # 사진별 임시 결과 (배치 실행 중간 파일)
 experiments/*/rows/
+
+# Python 캐시
+__pycache__/
