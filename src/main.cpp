@@ -188,6 +188,56 @@ static int runAwbEval(const Options& opt, const std::string& input) {
     return finishAwbEval(opt, input, start, "ok", "", result);
 }
 
+// --awb: normImg로 조명을 추정해 위치별 WB 이득 표(table)를 만든다.
+// R 위치 = gain.r, B 위치 = gain.b, G 위치 = 1 (위치는 meta.colors로 판단). meta.gains는 건드리지 않는다
+// 실패하면 이유를 std::cerr에 출력하고 false (error에 finishRun에 넘길 문구를 담는다)
+static bool awbGainTable(AwbMethod method, const cv::Mat& normImg, const RawMeta& meta,
+                         float (&table)[2][2], std::string& error) {
+    const std::string name = awbMethodName(method);
+
+    const HalfStats hs = computeHalfStats(normImg, meta.colors);
+    if (hs.img.empty()) {
+        error = "half stats failed";
+        std::cerr << error << std::endl;
+        return false;
+    }
+
+    const std::optional<Illum> est = estimateIllum(hs, method);
+    const std::optional<Gain> gain = est ? illumToGain(*est) : std::nullopt;
+    if (!est || !gain) {
+        error = "awb estimate failed";
+        std::cerr << error << ": " << name << std::endl;
+        return false;
+    }
+
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) {
+            const int color = meta.colors[r][c];
+            if (color == 0) table[r][c] = static_cast<float>(gain->r);
+            else if (color == 2) table[r][c] = static_cast<float>(gain->b);
+            else table[r][c] = 1.0f;
+        }
+    }
+
+    // 콘솔 확인용: 기록 이득, 추정 이득, 각도 오차 (기준이 유효할 때)
+    const Gain recorded = recordedGain(meta);
+    const std::optional<Illum> ref = referenceIllum(recorded);
+    const std::optional<Illum> est_g = normalizeToG(*est);
+
+    std::cout << "AWB " << name << std::endl;
+    std::cout << "  recorded gain  R " << fixedNum(recorded.r, 4) << "  G 1.0000  B "
+              << fixedNum(recorded.b, 4) << std::endl;
+    std::cout << "  estimated gain R " << fixedNum(gain->r, 4) << "  G 1.0000  B "
+              << fixedNum(gain->b, 4) << std::endl;
+    if (ref && est_g) {
+        std::cout << "  err " << fixedNum(angularError(*est_g, *ref), 3) << " deg (vs recorded)" << std::endl;
+    } else {
+        std::cout << "  err - (recorded gain is not valid)" << std::endl;
+    }
+
+    return true;
+}
+
 int main (int argc, char* argv[]) {
 
     Options opt;
@@ -247,7 +297,19 @@ int main (int argc, char* argv[]) {
     cv::Mat normImg = NormalizeBlackLevel(rawImg, blackMeta);
 
     // 2단계: White Balance. wb.img(WBImg)는 자르기 전, wb.clip(WBClip)은 1에서 자른 것
-    WBResult wb = WhiteBalance(normImg, meta.gains);
+    // --awb: 기록 이득 대신 추정 이득 표를 쓴다 (meta.gains는 그대로 둔다)
+    float wbGains[2][2];
+    for (int r = 0; r < 2; r++) {
+        for (int c = 0; c < 2; c++) wbGains[r][c] = meta.gains[r][c];
+    }
+    if (opt.awbMethod) {
+        std::string awb_error;
+        if (!awbGainTable(*opt.awbMethod, normImg, meta, wbGains, awb_error)) {
+            return finishRun(opt, input, start, awb_error, compare_stats);
+        }
+    }
+
+    WBResult wb = WhiteBalance(normImg, wbGains);
 
     // 3단계: Demosaic (CV_32FC3, 내부는 RGB: [0] R, [1] G, [2] B)
     // 실험 1-b: Demosaic에만 R↔B 바꾼 패턴을 넘긴다 (Black Level, WB는 원래 패턴)
